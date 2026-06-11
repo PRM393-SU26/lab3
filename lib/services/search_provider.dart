@@ -1,10 +1,24 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/work.dart';
 import '../models/analytics.dart';
+import '../models/author_detail.dart';
 import '../services/openalex_service.dart';
 import '../utils/exceptions.dart';
 
 enum LoadState { idle, loading, success, error }
+
+enum WorkSortOption {
+  citationsDesc('cited_by_count:desc', 'Citations (high → low)'),
+  citationsAsc('cited_by_count:asc', 'Citations (low → high)'),
+  yearDesc('publication_year:desc', 'Year (newest first)'),
+  yearAsc('publication_year:asc', 'Year (oldest first)');
+
+  const WorkSortOption(this.apiValue, this.label);
+
+  final String apiValue;
+  final String label;
+}
 
 /// Manages all search + analytics state for the app.
 /// Used with Provider – wrap MaterialApp with ChangeNotifierProvider.
@@ -14,7 +28,7 @@ class SearchProvider extends ChangeNotifier {
   SearchProvider({OpenAlexService? service})
       : _service = service ?? OpenAlexService();
 
-  // ── Shared state ──────────────────────────────
+  // ── Shared ────────────────────────────────────
   String _currentTopic = '';
   String get currentTopic => _currentTopic;
 
@@ -26,7 +40,16 @@ class SearchProvider extends ChangeNotifier {
   List<Work> works = [];
   int totalResults = 0;
   int _currentPage = 1;
+  bool _openAccessOnly = false;
+  int? _yearFrom;
+  int? _yearTo;
+  WorkSortOption _sortBy = WorkSortOption.citationsDesc;
+  WorkSortOption get sortBy => _sortBy;
   bool get hasMore => works.length < totalResults;
+
+  // ── NEW: Autocomplete ─────────────────────────
+  List<String> suggestions = [];
+  Timer? _debounce;
 
   // ── 4.3 Trend ─────────────────────────────────
   LoadState trendState = LoadState.idle;
@@ -40,9 +63,29 @@ class SearchProvider extends ChangeNotifier {
   LoadState journalsState = LoadState.idle;
   List<JournalStat> topJournals = [];
 
+  // ── NEW: Source detail ────────────────────────
+  LoadState sourceDetailState = LoadState.idle;
+  SourceDetail? selectedSource;
+
   // ── 4.6 Top authors ───────────────────────────
   LoadState authorsState = LoadState.idle;
   List<AuthorStat> topAuthors = [];
+
+  // ── NEW: Author detail ────────────────────────
+  LoadState authorDetailState = LoadState.idle;
+  AuthorDetail? selectedAuthor;
+
+  // ── NEW: Country breakdown ────────────────────
+  LoadState countryState = LoadState.idle;
+  List<CountryStat> countryBreakdown = [];
+
+  // ── NEW: OA breakdown ─────────────────────────
+  LoadState oaBreakdownState = LoadState.idle;
+  List<OaStat> oaBreakdown = [];
+
+  // ── NEW: Related works ────────────────────────
+  LoadState relatedWorksState = LoadState.idle;
+  List<Work> relatedWorks = [];
 
   // ── 4.7 Dashboard ─────────────────────────────
   LoadState dashboardState = LoadState.idle;
@@ -57,17 +100,22 @@ class SearchProvider extends ChangeNotifier {
   // ─────────────────────────────────────────────
 
   /// Called when user submits a new search query.
-  /// Resets all state and fetches the first page.
   Future<void> search(String topic, {
     bool openAccessOnly = false,
     int? yearFrom,
     int? yearTo,
+    WorkSortOption? sortBy,
   }) async {
     if (topic.trim().isEmpty) return;
     _currentTopic = topic.trim();
     _currentPage = 1;
+    _openAccessOnly = openAccessOnly;
+    _yearFrom = yearFrom;
+    _yearTo = yearTo;
+    if (sortBy != null) _sortBy = sortBy;
     works = [];
     totalResults = 0;
+    suggestions = [];
     _setError(null);
 
     searchState = LoadState.loading;
@@ -80,6 +128,7 @@ class SearchProvider extends ChangeNotifier {
         openAccessOnly: openAccessOnly,
         yearFrom: yearFrom,
         yearTo: yearTo,
+        sort: _sortBy.apiValue,
       );
       works = result.works;
       totalResults = result.total;
@@ -102,11 +151,72 @@ class SearchProvider extends ChangeNotifier {
       final result = await _service.searchWorks(
         topic: _currentTopic,
         page: _currentPage,
+        openAccessOnly: _openAccessOnly,
+        yearFrom: _yearFrom,
+        yearTo: _yearTo,
+        sort: _sortBy.apiValue,
       );
       works.addAll(result.works);
       searchState = LoadState.success;
     } on OpenAlexException catch (e) {
-      _currentPage--; // rollback
+      _currentPage--;
+      _setError(e.message);
+      searchState = LoadState.error;
+    }
+    notifyListeners();
+  }
+
+  /// NEW: Debounced autocomplete — call from TextField.onChanged.
+  /// Usage: provider.fetchSuggestions(value)
+  void fetchSuggestions(String query) {
+    _debounce?.cancel();
+    if (query.trim().length < 2) {
+      suggestions = [];
+      notifyListeners();
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        suggestions = await _service.autocomplete(query);
+        notifyListeners();
+      } catch (_) {
+        suggestions = [];
+        notifyListeners();
+      }
+    });
+  }
+
+  void clearSuggestions() {
+    _debounce?.cancel();
+    suggestions = [];
+    notifyListeners();
+  }
+
+  /// Re-fetch results with a new sort order (resets pagination).
+  Future<void> setSortBy(WorkSortOption sort) async {
+    if (_sortBy == sort || _currentTopic.isEmpty) return;
+    _sortBy = sort;
+    _currentPage = 1;
+    works = [];
+    totalResults = 0;
+    _setError(null);
+
+    searchState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      final result = await _service.searchWorks(
+        topic: _currentTopic,
+        page: 1,
+        openAccessOnly: _openAccessOnly,
+        yearFrom: _yearFrom,
+        yearTo: _yearTo,
+        sort: _sortBy.apiValue,
+      );
+      works = result.works;
+      totalResults = result.total;
+      searchState = LoadState.success;
+    } on OpenAlexException catch (e) {
       _setError(e.message);
       searchState = LoadState.error;
     }
@@ -116,12 +226,18 @@ class SearchProvider extends ChangeNotifier {
   /// Fetch full detail for a work (req 4.2).
   Future<void> loadWorkDetail(String workId) async {
     selectedWork = null;
+    relatedWorks = [];
     detailState = LoadState.loading;
     notifyListeners();
 
     try {
       selectedWork = await _service.getWorkDetail(workId);
       detailState = LoadState.success;
+      try {
+        relatedWorks = await _service.getRelatedWorks(workId);
+      } on OpenAlexException {
+        relatedWorks = [];
+      }
     } on OpenAlexException catch (e) {
       _setError(e.message);
       detailState = LoadState.error;
@@ -129,7 +245,7 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Load all analytics data for the Trend Analysis screen (reqs 4.3–4.6).
+  /// Load all analytics for the Trend Analysis screen (reqs 4.3–4.6 + country).
   Future<void> loadTrendAnalysis() async {
     if (_currentTopic.isEmpty) return;
 
@@ -137,31 +253,57 @@ class SearchProvider extends ChangeNotifier {
     topPapersState = LoadState.loading;
     journalsState = LoadState.loading;
     authorsState = LoadState.loading;
+    countryState = LoadState.loading;
     notifyListeners();
 
-    // Fire all calls in parallel
-    await Future.wait([
-      _loadTrend(),
-      _loadTopPapers(),
-      _loadTopJournals(),
-      _loadTopAuthors(),
-    ]);
+    await _loadTrend();
+    await Future.wait([_loadTopPapers(), _loadTopJournals()]);
+    await Future.wait([_loadTopAuthors(), _loadCountryBreakdown()]);
 
     notifyListeners();
   }
 
-  /// Load dashboard summary (req 4.7).
+  /// Load dashboard summary (req 4.7) + OA breakdown.
   Future<void> loadDashboard() async {
     if (_currentTopic.isEmpty) return;
     dashboardState = LoadState.loading;
+    oaBreakdownState = LoadState.loading;
+    notifyListeners();
+
+    await _loadDashboardData();
+    await _loadOaBreakdown();
+
+    notifyListeners();
+  }
+
+  /// NEW: Load author profile. Call when user taps an author.
+  Future<void> loadAuthorDetail(String authorId) async {
+    selectedAuthor = null;
+    authorDetailState = LoadState.loading;
     notifyListeners();
 
     try {
-      dashboard = await _service.getDashboard(_currentTopic);
-      dashboardState = LoadState.success;
+      selectedAuthor = await _service.getAuthorDetail(authorId);
+      authorDetailState = LoadState.success;
     } on OpenAlexException catch (e) {
       _setError(e.message);
-      dashboardState = LoadState.error;
+      authorDetailState = LoadState.error;
+    }
+    notifyListeners();
+  }
+
+  /// NEW: Load journal/source profile. Call when user taps a journal.
+  Future<void> loadSourceDetail(String sourceId) async {
+    selectedSource = null;
+    sourceDetailState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      selectedSource = await _service.getSourceDetail(sourceId);
+      sourceDetailState = LoadState.success;
+    } on OpenAlexException catch (e) {
+      _setError(e.message);
+      sourceDetailState = LoadState.error;
     }
     notifyListeners();
   }
@@ -210,10 +352,41 @@ class SearchProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadCountryBreakdown() async {
+    try {
+      countryBreakdown = await _service.getCountryBreakdown(_currentTopic);
+      countryState = LoadState.success;
+    } on OpenAlexException catch (e) {
+      _setError(e.message);
+      countryState = LoadState.error;
+    }
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      dashboard = await _service.getDashboard(_currentTopic);
+      dashboardState = LoadState.success;
+    } on OpenAlexException catch (e) {
+      _setError(e.message);
+      dashboardState = LoadState.error;
+    }
+  }
+
+  Future<void> _loadOaBreakdown() async {
+    try {
+      oaBreakdown = await _service.getOaBreakdown(_currentTopic);
+      oaBreakdownState = LoadState.success;
+    } on OpenAlexException catch (e) {
+      _setError(e.message);
+      oaBreakdownState = LoadState.error;
+    }
+  }
+
   void _setError(String? msg) => _errorMessage = msg;
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _service.dispose();
     super.dispose();
   }

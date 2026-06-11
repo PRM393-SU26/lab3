@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/author_detail.dart';
 import '../services/search_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -30,7 +31,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: Builder(
         builder: (context) {
-          if (provider.dashboardState == LoadState.loading) {
+          if (provider.dashboardState == LoadState.loading ||
+              provider.oaBreakdownState == LoadState.loading) {
             return const Center(child: CircularProgressIndicator());
           }
           if (provider.dashboardState == LoadState.error) {
@@ -188,6 +190,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Text('No paper details found'),
                     ),
                   ),
+
+                if (provider.oaBreakdown.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  Text(
+                    'Open Access Breakdown',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: theme.colorScheme.outlineVariant),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < provider.oaBreakdown.length; i++) ...[
+                            if (i > 0) const SizedBox(height: 12),
+                            _OaBreakdownRow(
+                              stat: provider.oaBreakdown[i],
+                              total: provider.oaBreakdown
+                                  .fold(0, (sum, s) => sum + s.count),
+                              theme: theme,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 40),
               ],
             ),
@@ -248,6 +282,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  static Color _oaStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'gold':
+        return Colors.amber.shade700;
+      case 'green':
+        return Colors.green.shade600;
+      case 'hybrid':
+        return Colors.blue.shade600;
+      case 'bronze':
+        return Colors.orange.shade700;
+      case 'closed':
+        return Colors.grey.shade600;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
   Widget _buildInfoRowCard(
     ThemeData theme,
     IconData icon,
@@ -278,6 +329,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
           overflow: TextOverflow.ellipsis,
         ),
       ),
+    );
+  }
+}
+
+class _OaBreakdownRow extends StatelessWidget {
+  final OaStat stat;
+  final int total;
+  final ThemeData theme;
+
+  const _OaBreakdownRow({
+    required this.stat,
+    required this.total,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = total > 0 ? stat.count / total : 0.0;
+    final color = _DashboardScreenState._oaStatusColor(stat.status);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                stat.status.toUpperCase(),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+            ),
+            Text(
+              '${stat.count} (${(ratio * 100).toStringAsFixed(1)}%)',
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: ratio,
+            minHeight: 8,
+            backgroundColor: theme.colorScheme.surfaceVariant,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }

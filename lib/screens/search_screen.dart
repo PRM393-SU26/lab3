@@ -43,6 +43,7 @@ class _SearchScreenState extends State<SearchScreen> {
   void _performSearch() {
     final query = _searchController.text.trim();
     if (query.isNotEmpty) {
+      context.read<SearchProvider>().clearSuggestions();
       context.read<SearchProvider>().search(
         query,
         openAccessOnly: _openAccessOnly,
@@ -88,36 +89,95 @@ class _SearchScreenState extends State<SearchScreen> {
       body: Column(
         children: [
           // Search & Filter Panel
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            color: theme.colorScheme.surface,
-            child: Column(
-              children: [
-                Row(
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.45,
+            ),
+            child: SingleChildScrollView(
+              child: Container(
+                padding: const EdgeInsets.all(16.0),
+                color: theme.colorScheme.surface,
+                child: Column(
                   children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                     Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search topic (e.g. machine learning)',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() {});
-                                  },
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Search topic (e.g. machine learning)',
+                              prefixIcon: const Icon(Icons.search),
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        context.read<SearchProvider>().clearSuggestions();
+                                        setState(() {});
+                                      },
+                                    )
+                                  : null,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                            ),
+                            onChanged: (val) {
+                              context.read<SearchProvider>().fetchSuggestions(val);
+                              setState(() {});
+                            },
+                            onSubmitted: (_) {
+                              context.read<SearchProvider>().clearSuggestions();
+                              _performSearch();
+                            },
                           ),
-                          filled: true,
-                          fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                        ),
-                        onChanged: (val) => setState(() {}),
-                        onSubmitted: (_) => _performSearch(),
+                          if (provider.suggestions.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Material(
+                                elevation: 4,
+                                borderRadius: BorderRadius.circular(12),
+                                color: theme.colorScheme.surface,
+                                clipBehavior: Clip.antiAlias,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(maxHeight: 180),
+                                  child: ListView.separated(
+                                    shrinkWrap: true,
+                                    padding: EdgeInsets.zero,
+                                    itemCount: provider.suggestions.length,
+                                    separatorBuilder: (_, __) => Divider(
+                                      height: 1,
+                                      color: theme.colorScheme.outlineVariant,
+                                    ),
+                                    itemBuilder: (context, index) {
+                                      final suggestion = provider.suggestions[index];
+                                      return ListTile(
+                                        dense: true,
+                                        visualDensity: VisualDensity.compact,
+                                        leading: const Icon(Icons.search, size: 18),
+                                        title: Text(
+                                          suggestion,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        onTap: () {
+                                          _searchController.text = suggestion;
+                                          context.read<SearchProvider>().clearSuggestions();
+                                          setState(() {});
+                                          _performSearch();
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -126,23 +186,26 @@ class _SearchScreenState extends State<SearchScreen> {
                       onPressed: () => setState(() => _showFilters = !_showFilters),
                     ),
                     const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
+                        onPressed: _performSearch,
+                        child: const Text('Search'),
                       ),
-                      onPressed: _performSearch,
-                      child: const Text('Search'),
                     ),
-                  ],
-                ),
-                
-                // Expandable Filters
-                if (_showFilters) ...[
+                      ],
+                    ),
+
+                    // Expandable Filters
+                    if (_showFilters) ...[
                   const SizedBox(height: 16),
                   Card(
                     elevation: 0,
@@ -201,14 +264,26 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                     ),
                   )
-                ]
-              ],
+                    ]
+                  ],
+                ),
+              ),
             ),
           ),
           
           // Results Area
           Expanded(
-            child: _buildResultsList(provider, theme),
+            child: Column(
+              children: [
+                if (provider.works.isNotEmpty ||
+                    (provider.searchState == LoadState.loading &&
+                        provider.currentTopic.isNotEmpty))
+                  _buildSortBar(provider, theme),
+                Expanded(
+                  child: _buildResultsList(provider, theme),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -246,6 +321,74 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             )
           : null,
+    );
+  }
+
+  Widget _buildSortBar(SearchProvider provider, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        border: Border(
+          bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.sort, size: 20, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Text(
+                'Sort by:',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<WorkSortOption>(
+                    isExpanded: true,
+                    isDense: true,
+                    value: provider.sortBy,
+                    items: WorkSortOption.values
+                        .map(
+                          (option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(
+                              option.label,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: provider.searchState == LoadState.loading
+                        ? null
+                        : (option) {
+                            if (option != null) {
+                              context.read<SearchProvider>().setSortBy(option);
+                            }
+                          },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (provider.totalResults > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 2, left: 28),
+              child: Text(
+                '${provider.totalResults} results',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -398,8 +541,8 @@ class _SearchScreenState extends State<SearchScreen> {
                           fontSize: 12,
                         ),
                       ),
-                      const Spacer(),
-                      if (work.primarySource?.displayName != null)
+                      if (work.primarySource?.displayName != null) ...[
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             work.primarySource!.displayName,
@@ -413,6 +556,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                      ],
                     ],
                   ),
                 ],
