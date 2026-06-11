@@ -217,7 +217,7 @@ class OpenAlexService {
     final counts = groups
         .where((g) {
           final year = int.tryParse(g['key']?.toString() ?? '');
-          return year != null && year >= 2000 && year <= DateTime.now().year;
+          return year != null && year <= DateTime.now().year;
         })
         .map((g) => YearlyCount(
               year: int.parse(g['key'].toString()),
