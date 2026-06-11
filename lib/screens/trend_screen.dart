@@ -2,7 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/search_provider.dart';
+import 'author_detail_screen.dart';
 import 'detail_screen.dart';
+import 'source_detail_screen.dart';
 
 class TrendScreen extends StatefulWidget {
   const TrendScreen({super.key});
@@ -36,7 +38,7 @@ class _TrendScreenState extends State<TrendScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SearchProvider>().loadTrendAnalysis();
     });
@@ -55,7 +57,8 @@ class _TrendScreenState extends State<TrendScreen>
     final isLoading = provider.trendState == LoadState.loading ||
         provider.topPapersState == LoadState.loading ||
         provider.journalsState == LoadState.loading ||
-        provider.authorsState == LoadState.loading;
+        provider.authorsState == LoadState.loading ||
+        provider.countryState == LoadState.loading;
 
     return Scaffold(
       backgroundColor: _slate50,
@@ -183,6 +186,15 @@ class _TrendScreenState extends State<TrendScreen>
                         ],
                       ),
                     ),
+                    Tab(
+                      child: Row(
+                        children: [
+                          Icon(Icons.public_rounded, size: 16),
+                          SizedBox(width: 6),
+                          Text('Countries'),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -198,6 +210,7 @@ class _TrendScreenState extends State<TrendScreen>
                   _TopPapersTab(provider: provider),
                   _TopJournalsTab(provider: provider),
                   _TopAuthorsTab(provider: provider),
+                  _CountriesTab(provider: provider),
                 ],
               ),
       ),
@@ -422,72 +435,89 @@ class _BarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final chartHeight = constraints.maxHeight - 32; // reserve for labels
+        const topLabelSlot = 14.0;
+        const bottomLabelSlot = 20.0;
+        const verticalGaps = 8.0; // 2px above bar + 6px below bar
+        final maxBarHeight = constraints.maxHeight -
+            topLabelSlot -
+            bottomLabelSlot -
+            verticalGaps;
+
         return Row(
           crossAxisAlignment: CrossAxisAlignment.end,
-          children: data.map((entry) {
+          children: List.generate(data.length, (index) {
+            final entry = data[index];
             final isPeak = entry.year == peakYear;
             final ratio = maxCount > 0 ? (entry.count / maxCount) : 0.0;
-            final barH = max(ratio * chartHeight, 6.0);
+            final barH = max(ratio * maxBarHeight, 6.0);
 
             return Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // Count label — only for peak
-                  if (isPeak)
-                    Text(
-                      '${entry.count}',
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: _amber,
+              child: SizedBox(
+                height: constraints.maxHeight,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    SizedBox(
+                      height: topLabelSlot,
+                      child: Center(
+                        child: isPeak
+                            ? Text(
+                                '${entry.count}',
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: _amber,
+                                ),
+                              )
+                            : null,
                       ),
-                    )
-                  else
-                    const SizedBox(height: 12),
-                  const SizedBox(height: 2),
-                  // Bar
-                  Tooltip(
-                    message: '${entry.year}: ${entry.count} papers',
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                      height: barH,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isPeak
-                              ? [_amber, const Color(0xFFF59E0B)]
-                              : [_indigo.withOpacity(0.6), _indigo],
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                        ),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4),
+                    ),
+                    const SizedBox(height: 2),
+                    Tooltip(
+                      message: '${entry.year}: ${entry.count} papers',
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                        height: barH,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isPeak
+                                ? [_amber, const Color(0xFFF59E0B)]
+                                : [_indigo.withOpacity(0.6), _indigo],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  // Year label — every other to avoid crowding
-                  data.indexOf(entry) % 2 == 0
-                      ? RotatedBox(
-                          quarterTurns: 1,
-                          child: Text(
-                            '${entry.year}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: isPeak ? _amber : _slate400,
-                              fontWeight: isPeak
-                                  ? FontWeight.w700
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        )
-                      : const SizedBox(height: 16),
-                ],
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: bottomLabelSlot,
+                      child: index % 2 == 0
+                          ? Center(
+                              child: RotatedBox(
+                                quarterTurns: 1,
+                                child: Text(
+                                  '${entry.year}',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: isPeak ? _amber : _slate400,
+                                    fontWeight: isPeak
+                                        ? FontWeight.w700
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
               ),
             );
-          }).toList(),
+          }),
         );
       },
     );
@@ -722,6 +752,7 @@ class _TopJournalsTab extends StatelessWidget {
     return _RankedBarList(
       items: provider.topJournals
           .map((j) => _RankItem(
+                id: j.sourceId,
                 name: j.displayName,
                 count: j.paperCount,
                 subtitle: '${j.paperCount} papers',
@@ -731,6 +762,18 @@ class _TopJournalsTab extends StatelessWidget {
       color: _indigo,
       bgColor: _indigoLight,
       icon: Icons.menu_book_rounded,
+      onItemTap: (item) {
+        if (item.id == null) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SourceDetailScreen(
+              sourceId: item.id!,
+              sourceName: item.name,
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -762,6 +805,7 @@ class _TopAuthorsTab extends StatelessWidget {
     return _RankedBarList(
       items: provider.topAuthors
           .map((a) => _RankItem(
+                id: a.authorId,
                 name: a.displayName,
                 count: a.paperCount,
                 subtitle: '${a.paperCount} papers',
@@ -771,6 +815,58 @@ class _TopAuthorsTab extends StatelessWidget {
       color: _violet,
       bgColor: _violetLight,
       icon: Icons.person_rounded,
+      onItemTap: (item) {
+        if (item.id == null) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AuthorDetailScreen(
+              authorId: item.id!,
+              authorName: item.name,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Tab: Countries
+// ────────────────────────────────────────────────────────────────────────────
+
+class _CountriesTab extends StatelessWidget {
+  final SearchProvider provider;
+
+  static const _emerald = Color(0xFF059669);
+  static const _emeraldLight = Color(0xFFD1FAE5);
+
+  const _CountriesTab({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    if (provider.countryBreakdown.isEmpty) {
+      return const _EmptyTab(
+        icon: Icons.public_rounded,
+        message: 'No country statistics available.',
+      );
+    }
+
+    final maxCount =
+        provider.countryBreakdown.map((e) => e.paperCount).fold(0, max);
+
+    return _RankedBarList(
+      items: provider.countryBreakdown
+          .map((c) => _RankItem(
+                name: c.displayName,
+                count: c.paperCount,
+                subtitle: '${c.paperCount} papers',
+              ))
+          .toList(),
+      maxCount: maxCount,
+      color: _emerald,
+      bgColor: _emeraldLight,
+      icon: Icons.flag_rounded,
     );
   }
 }
@@ -780,10 +876,16 @@ class _TopAuthorsTab extends StatelessWidget {
 // ────────────────────────────────────────────────────────────────────────────
 
 class _RankItem {
+  final String? id;
   final String name;
   final int count;
   final String subtitle;
-  const _RankItem({required this.name, required this.count, required this.subtitle});
+  const _RankItem({
+    this.id,
+    required this.name,
+    required this.count,
+    required this.subtitle,
+  });
 }
 
 class _RankedBarList extends StatelessWidget {
@@ -792,6 +894,7 @@ class _RankedBarList extends StatelessWidget {
   final Color color;
   final Color bgColor;
   final IconData icon;
+  final void Function(_RankItem item)? onItemTap;
 
   static const _slate100 = Color(0xFFF1F5F9);
   static const _slate200 = Color(0xFFE2E8F0);
@@ -805,6 +908,7 @@ class _RankedBarList extends StatelessWidget {
     required this.color,
     required this.bgColor,
     required this.icon,
+    this.onItemTap,
   });
 
   @override
@@ -816,7 +920,14 @@ class _RankedBarList extends StatelessWidget {
         final item = items[index];
         final ratio = maxCount > 0 ? item.count / maxCount : 0.0;
 
-        return Container(
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onItemTap != null && item.id != null
+                ? () => onItemTap!(item)
+                : null,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -912,7 +1023,14 @@ class _RankedBarList extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onItemTap != null && item.id != null) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right_rounded,
+                    color: _slate400, size: 20),
+              ],
             ],
+          ),
+            ),
           ),
         );
       },

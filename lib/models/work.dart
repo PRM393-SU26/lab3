@@ -23,6 +23,12 @@ class Work {
     this.type,
   });
 
+  static int _asInt(dynamic value, [int fallback = 0]) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
   factory Work.fromJson(Map<String, dynamic> json) {
     // Reconstruct abstract from inverted index
     String? abstract;
@@ -36,8 +42,10 @@ class Work {
     return Work(
       id: json['id'] ?? '',
       title: json['title'] ?? 'Untitled',
-      publicationYear: json['publication_year'],
-      citedByCount: json['cited_by_count'] ?? 0,
+      publicationYear: json['publication_year'] != null
+          ? _asInt(json['publication_year'])
+          : null,
+      citedByCount: _asInt(json['cited_by_count']),
       doi: json['doi'],
       abstractText: abstract,
       isOpenAccess: json['open_access']?['is_oa'] ?? false,

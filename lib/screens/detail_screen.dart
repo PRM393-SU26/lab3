@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/search_provider.dart';
+import '../utils/link_launcher.dart';
+import 'author_detail_screen.dart';
+import 'source_detail_screen.dart';
 
 class DetailScreen extends StatefulWidget {
   final String workId;
@@ -138,6 +141,22 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                     title: Text(work.primarySource!.displayName),
                     subtitle: Text(work.primarySource!.type ?? 'Journal'),
+                    trailing: work.primarySource!.id != null
+                        ? const Icon(Icons.chevron_right)
+                        : null,
+                    onTap: work.primarySource!.id != null
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SourceDetailScreen(
+                                  sourceId: work.primarySource!.id!,
+                                  sourceName: work.primarySource!.displayName,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
                   ),
                   const Divider(height: 24),
                 ],
@@ -152,33 +171,57 @@ class _DetailScreenState extends State<DetailScreen> {
                     itemCount: work.authorships.length,
                     itemBuilder: (context, idx) {
                       final auth = work.authorships[idx];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.person, size: 18, color: Colors.grey),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    auth.authorName,
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                      return InkWell(
+                        onTap: auth.authorId != null
+                            ? () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => AuthorDetailScreen(
+                                      authorId: auth.authorId!,
+                                      authorName: auth.authorName,
+                                    ),
                                   ),
-                                  if (auth.institutionName != null)
+                                );
+                              }
+                            : null,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.person, size: 18, color: Colors.grey),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     Text(
-                                      auth.institutionName!,
+                                      auth.authorName,
                                       style: TextStyle(
-                                        fontSize: 12,
-                                        color: theme.colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.bold,
+                                        color: auth.authorId != null
+                                            ? theme.colorScheme.primary
+                                            : null,
                                       ),
                                     ),
-                                ],
+                                    if (auth.institutionName != null)
+                                      Text(
+                                        auth.institutionName!,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: theme.colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                              if (auth.authorId != null)
+                                Icon(Icons.chevron_right,
+                                    size: 18, color: theme.colorScheme.outline),
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -191,14 +234,27 @@ class _DetailScreenState extends State<DetailScreen> {
                   Text('DOI', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
                   InkWell(
-                    onTap: () {
-                      // Custom action or print
-                    },
-                    child: Text(
-                      work.doi!,
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        decoration: TextDecoration.underline,
+                    onTap: () => LinkLauncher.openDoi(context, work.doi!),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              work.doi!,
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.open_in_new,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -215,6 +271,45 @@ class _DetailScreenState extends State<DetailScreen> {
                   style: const TextStyle(height: 1.5, fontSize: 14),
                   textAlign: TextAlign.justify,
                 ),
+
+                if (provider.relatedWorks.isNotEmpty) ...[
+                  const Divider(height: 32),
+                  Text(
+                    'Citing Papers',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: provider.relatedWorks.length,
+                    itemBuilder: (context, idx) {
+                      final related = provider.relatedWorks[idx];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text(
+                            related.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${related.publicationYear ?? 'N/A'} · ${related.citedByCount} citations',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DetailScreen(workId: related.id),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ],
                 const SizedBox(height: 40),
               ],
             ),
