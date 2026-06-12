@@ -394,20 +394,63 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildResultsList(SearchProvider provider, ThemeData theme) {
     if (provider.searchState == LoadState.idle && provider.works.isEmpty) {
-      return Center(
+      final List<String> suggestedTopics = [
+        'Artificial Intelligence',
+        'Machine Learning',
+        'Data Science',
+        'Quantum Computing',
+        'Cybersecurity',
+        'Blockchain',
+        'Internet of Things',
+        'Cloud Computing',
+        'Augmented Reality',
+        'Bioinformatics',
+      ];
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.search_outlined, size: 64, color: theme.colorScheme.outline),
-            const SizedBox(height: 16),
-            const Text(
-              'Search for any research topic to begin',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Center(
+              child: Column(
+                children: [
+                  Icon(Icons.explore_outlined, size: 64, color: theme.colorScheme.primary.withOpacity(0.5)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Discover Research Trends',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Search for topics or choose from suggestions below',
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
             Text(
-              'Try "artificial intelligence" or "quantum computing"',
-              style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              'Suggested Topics',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 8.0,
+              children: suggestedTopics.map((topic) {
+                return ActionChip(
+                  avatar: Icon(Icons.trending_up, size: 16, color: theme.colorScheme.primary),
+                  label: Text(topic),
+                  onPressed: () {
+                    _searchController.text = topic;
+                    _performSearch();
+                  },
+                );
+              }).toList(),
             ),
           ],
         ),

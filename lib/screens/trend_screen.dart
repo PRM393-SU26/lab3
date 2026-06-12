@@ -65,7 +65,7 @@ class _TrendScreenState extends State<TrendScreen>
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 130,
+            expandedHeight: 200,
             floating: false,
             pinned: true,
             snap: false,
@@ -85,7 +85,7 @@ class _TrendScreenState extends State<TrendScreen>
                     colors: [_indigo, _indigoDark],
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 56, 20, 64),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -222,9 +222,16 @@ class _TrendScreenState extends State<TrendScreen>
 // Tab: Yearly Trend
 // ────────────────────────────────────────────────────────────────────────────
 
-class _YearlyTrendTab extends StatelessWidget {
+class _YearlyTrendTab extends StatefulWidget {
   final SearchProvider provider;
 
+  const _YearlyTrendTab({required this.provider});
+
+  @override
+  State<_YearlyTrendTab> createState() => _YearlyTrendTabState();
+}
+
+class _YearlyTrendTabState extends State<_YearlyTrendTab> {
   static const _indigo     = Color(0xFF4F46E5);
   static const _indigoLight= Color(0xFFEEF2FF);
   static const _indigoDark = Color(0xFF3730A3);
@@ -240,10 +247,12 @@ class _YearlyTrendTab extends StatelessWidget {
   static const _amber      = Color(0xFFD97706);
   static const _amberLight = Color(0xFFFEF3C7);
 
-  const _YearlyTrendTab({required this.provider});
+  int _currentPage = 0;
+  static const int _itemsPerPage = 12;
 
   @override
   Widget build(BuildContext context) {
+    final provider = widget.provider;
     if (provider.yearlyTrend.isEmpty) {
       return const _EmptyTab(
         icon: Icons.show_chart_rounded,
@@ -257,6 +266,23 @@ class _YearlyTrendTab extends StatelessWidget {
         .reduce((a, b) => a.count > b.count ? a : b);
     final total =
         provider.yearlyTrend.fold(0, (sum, e) => sum + e.count);
+
+    final int totalItems = provider.yearlyTrend.length;
+    final int totalPages = (totalItems / _itemsPerPage).ceil();
+    if (_currentPage >= totalPages) {
+      _currentPage = max(0, totalPages - 1);
+    }
+    
+    final int startIndex = _currentPage * _itemsPerPage;
+    final int endIndex = min(startIndex + _itemsPerPage, totalItems);
+    final List<dynamic> currentPageData = provider.yearlyTrend.sublist(startIndex, endIndex);
+
+    int localMaxCount = 0;
+    for (var e in currentPageData) {
+      if ((e.count as int) > localMaxCount) {
+        localMaxCount = e.count as int;
+      }
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
@@ -318,25 +344,63 @@ class _YearlyTrendTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Publications per Year',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: _slate900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Historical growth of publication volume on this topic.',
-                  style: TextStyle(fontSize: 12, color: _slate600),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Publications per Year',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: _slate900,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Historical growth of publication volume on this topic.',
+                            style: TextStyle(fontSize: 12, color: _slate600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (totalPages > 1)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left_rounded),
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            onPressed: _currentPage > 0
+                                ? () => setState(() => _currentPage--)
+                                : null,
+                          ),
+                          Text(
+                            '${_currentPage + 1} / $totalPages',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right_rounded),
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                            onPressed: _currentPage < totalPages - 1
+                                ? () => setState(() => _currentPage++)
+                                : null,
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
                   height: 220,
                   child: _BarChart(
-                    data: provider.yearlyTrend,
-                    maxCount: maxCount,
+                    data: currentPageData,
+                    maxCount: localMaxCount.toInt(),
                     peakYear: peakEntry.year,
                   ),
                 ),
@@ -444,6 +508,7 @@ class _BarChart extends StatelessWidget {
             verticalGaps;
 
         return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: List.generate(data.length, (index) {
             final entry = data[index];
@@ -451,12 +516,15 @@ class _BarChart extends StatelessWidget {
             final ratio = maxCount > 0 ? (entry.count / maxCount) : 0.0;
             final barH = max(ratio * maxBarHeight, 6.0);
 
-            return Expanded(
-              child: SizedBox(
-                height: constraints.maxHeight,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
+            return Flexible(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                child: SizedBox(
+                  width: 36,
+                  height: constraints.maxHeight,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
                     SizedBox(
                       height: topLabelSlot,
                       child: Center(
@@ -476,7 +544,7 @@ class _BarChart extends StatelessWidget {
                     Tooltip(
                       message: '${entry.year}: ${entry.count} papers',
                       child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                        width: 36,
                         height: barH,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -495,28 +563,24 @@ class _BarChart extends StatelessWidget {
                     const SizedBox(height: 6),
                     SizedBox(
                       height: bottomLabelSlot,
-                      child: index % 2 == 0
-                          ? Center(
-                              child: RotatedBox(
-                                quarterTurns: 1,
-                                child: Text(
-                                  '${entry.year}',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: isPeak ? _amber : _slate400,
-                                    fontWeight: isPeak
-                                        ? FontWeight.w700
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : null,
+                      child: Center(
+                        child: Text(
+                          '${entry.year}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isPeak ? _amber : _slate400,
+                            fontWeight: isPeak
+                                ? FontWeight.w700
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-            );
+            ),
+          );
           }),
         );
       },
