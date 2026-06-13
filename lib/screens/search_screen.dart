@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/reading_list_provider.dart';
 import '../services/search_provider.dart';
 import 'detail_screen.dart';
+import 'reading_list_screen.dart';
 import 'trend_screen.dart';
 import 'dashboard_screen.dart';
 
@@ -15,6 +17,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _searchFocusNode = FocusNode();
   
   bool _openAccessOnly = false;
   int? _yearFrom;
@@ -25,12 +28,14 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _searchFocusNode.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -62,6 +67,14 @@ class _SearchScreenState extends State<SearchScreen> {
       appBar: AppBar(
         title: const Text('Journal Trend Analyzer'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmarks_outlined),
+            tooltip: 'Reading List',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ReadingListScreen()),
+            ),
+          ),
           if (provider.currentTopic.isNotEmpty) ...[
             IconButton(
               icon: const Icon(Icons.bar_chart),
@@ -108,6 +121,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         children: [
                           TextField(
                             controller: _searchController,
+                            focusNode: _searchFocusNode,
                             decoration: InputDecoration(
                               hintText: 'Search topic (e.g. machine learning)',
                               prefixIcon: const Icon(Icons.search),
@@ -136,6 +150,32 @@ class _SearchScreenState extends State<SearchScreen> {
                               _performSearch();
                             },
                           ),
+                          if (_searchFocusNode.hasFocus &&
+                              provider.suggestions.isEmpty &&
+                              provider.searchHistory.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Wrap(
+                                spacing: 6.0,
+                                runSpacing: 4.0,
+                                children: provider.searchHistory.map((query) {
+                                  return InputChip(
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    avatar: const Icon(Icons.history, size: 14),
+                                    label: Text(
+                                      query,
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                    onPressed: () {
+                                      _searchController.text = query;
+                                      _performSearch();
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                            ),
                           if (provider.suggestions.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 4),
@@ -431,6 +471,44 @@ class _SearchScreenState extends State<SearchScreen> {
                 ],
               ),
             ),
+            if (provider.searchHistory.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent Searches',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        context.read<SearchProvider>().clearHistory(),
+                    child: const Text('Clear all'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 4.0,
+                children: provider.searchHistory.map((query) {
+                  return InputChip(
+                    avatar: const Icon(Icons.history, size: 16),
+                    label: Text(query),
+                    deleteIcon: const Icon(Icons.close, size: 14),
+                    onDeleted: () => context
+                        .read<SearchProvider>()
+                        .removeFromHistory(query),
+                    onPressed: () {
+                      _searchController.text = query;
+                      _performSearch();
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+            ],
             Text(
               'Suggested Topics',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -496,6 +574,8 @@ class _SearchScreenState extends State<SearchScreen> {
         }
 
         final work = provider.works[index];
+        final readingList = context.watch<ReadingListProvider>();
+        final isSaved = readingList.contains(work.id);
         return Card(
           elevation: 2,
           margin: const EdgeInsets.symmetric(vertical: 6),
@@ -546,6 +626,17 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           ),
                         ),
+                      IconButton(
+                        icon: Icon(
+                          isSaved ? Icons.bookmark : Icons.bookmark_border,
+                        ),
+                        color: isSaved ? theme.colorScheme.primary : null,
+                        iconSize: 20,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () =>
+                            context.read<ReadingListProvider>().toggle(work),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),

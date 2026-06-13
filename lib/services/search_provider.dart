@@ -4,6 +4,7 @@ import '../models/work.dart';
 import '../models/analytics.dart';
 import '../models/author_detail.dart';
 import '../services/openalex_service.dart';
+import '../services/search_history_service.dart';
 import '../utils/exceptions.dart';
 
 enum LoadState { idle, loading, success, error }
@@ -24,9 +25,12 @@ enum WorkSortOption {
 /// Used with Provider – wrap MaterialApp with ChangeNotifierProvider.
 class SearchProvider extends ChangeNotifier {
   final OpenAlexService _service;
+  final SearchHistoryService _historyService = SearchHistoryService();
 
   SearchProvider({OpenAlexService? service})
-      : _service = service ?? OpenAlexService();
+      : _service = service ?? OpenAlexService() {
+    loadHistory();
+  }
 
   // ── Shared ────────────────────────────────────
   String _currentTopic = '';
@@ -50,6 +54,9 @@ class SearchProvider extends ChangeNotifier {
   // ── NEW: Autocomplete ─────────────────────────
   List<String> suggestions = [];
   Timer? _debounce;
+
+  // ── Search history ────────────────────────────
+  List<String> searchHistory = [];
 
   // ── 4.3 Trend ─────────────────────────────────
   LoadState trendState = LoadState.idle;
@@ -137,6 +144,8 @@ class SearchProvider extends ChangeNotifier {
       _setError(e.message);
       searchState = LoadState.error;
     }
+    await _historyService.add(topic);
+    searchHistory = await _historyService.getAll();
     notifyListeners();
   }
 
@@ -189,6 +198,23 @@ class SearchProvider extends ChangeNotifier {
   void clearSuggestions() {
     _debounce?.cancel();
     suggestions = [];
+    notifyListeners();
+  }
+
+  Future<void> loadHistory() async {
+    searchHistory = await _historyService.getAll();
+    notifyListeners();
+  }
+
+  Future<void> removeFromHistory(String query) async {
+    await _historyService.remove(query);
+    searchHistory = await _historyService.getAll();
+    notifyListeners();
+  }
+
+  Future<void> clearHistory() async {
+    await _historyService.clear();
+    searchHistory = [];
     notifyListeners();
   }
 

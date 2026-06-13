@@ -1,20 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/reading_list_provider.dart';
 import 'screens/search_screen.dart';
 import 'services/search_provider.dart';
-
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => SearchProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SearchProvider()),
+        ChangeNotifierProvider(create: (_) => ReadingListProvider()),
+      ],
       child: const JournalTrendApp(),
     ),
   );
 }
 
-class JournalTrendApp extends StatelessWidget {
+class JournalTrendApp extends StatefulWidget {
   const JournalTrendApp({super.key});
+
+  @override
+  State<JournalTrendApp> createState() => _JournalTrendAppState();
+}
+
+class _JournalTrendAppState extends State<JournalTrendApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ReadingListProvider>().load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
