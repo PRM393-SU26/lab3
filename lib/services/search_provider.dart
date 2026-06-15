@@ -4,6 +4,7 @@ import '../models/work.dart';
 import '../models/analytics.dart';
 import '../models/author_detail.dart';
 import '../services/openalex_service.dart';
+import '../services/search_history_service.dart';
 import '../utils/exceptions.dart';
 
 enum LoadState { idle, loading, success, error }
@@ -24,9 +25,13 @@ enum WorkSortOption {
 /// Used with Provider – wrap MaterialApp with ChangeNotifierProvider.
 class SearchProvider extends ChangeNotifier {
   final OpenAlexService _service;
+  final SearchHistoryService _historyService = SearchHistoryService();
 
   SearchProvider({OpenAlexService? service})
-      : _service = service ?? OpenAlexService();
+      : _service = service ?? OpenAlexService() {
+    loadHistory();
+    loadGlobalTopAuthors();
+  }
 
   // ── Shared ────────────────────────────────────
   String _currentTopic = '';
@@ -51,6 +56,9 @@ class SearchProvider extends ChangeNotifier {
   List<String> suggestions = [];
   Timer? _debounce;
 
+  // ── Search history ────────────────────────────
+  List<String> searchHistory = [];
+
   // ── 4.3 Trend ─────────────────────────────────
   LoadState trendState = LoadState.idle;
   List<YearlyCount> yearlyTrend = [];
@@ -74,6 +82,10 @@ class SearchProvider extends ChangeNotifier {
   // ── NEW: Author detail ────────────────────────
   LoadState authorDetailState = LoadState.idle;
   AuthorDetail? selectedAuthor;
+
+  // ── NEW: Global Top Authors ──────────────────
+  LoadState globalTopAuthorsState = LoadState.idle;
+  List<SimpleAuthor> globalTopAuthors = [];
 
   // ── NEW: Country breakdown ────────────────────
   LoadState countryState = LoadState.idle;
@@ -137,6 +149,8 @@ class SearchProvider extends ChangeNotifier {
       _setError(e.message);
       searchState = LoadState.error;
     }
+    await _historyService.add(topic);
+    searchHistory = await _historyService.getAll();
     notifyListeners();
   }
 
@@ -189,6 +203,60 @@ class SearchProvider extends ChangeNotifier {
   void clearSuggestions() {
     _debounce?.cancel();
     suggestions = [];
+    notifyListeners();
+  }
+
+  Future<void> loadHistory() async {
+    searchHistory = await _historyService.getAll();
+    notifyListeners();
+  }
+
+  Future<void> removeFromHistory(String query) async {
+    await _historyService.remove(query);
+    searchHistory = await _historyService.getAll();
+    notifyListeners();
+  }
+
+  Future<void> clearHistory() async {
+    await _historyService.clear();
+    searchHistory = [];
+    notifyListeners();
+  }
+
+  /// Reset all search and analytical states to return to the main discovery screen.
+  void resetSearch() {
+    _currentTopic = '';
+    works = [];
+    totalResults = 0;
+    _currentPage = 1;
+    _openAccessOnly = false;
+    _yearFrom = null;
+    _yearTo = null;
+    searchState = LoadState.idle;
+    suggestions = [];
+    trendState = LoadState.idle;
+    yearlyTrend = [];
+    topPapersState = LoadState.idle;
+    topPapers = [];
+    journalsState = LoadState.idle;
+    topJournals = [];
+    sourceDetailState = LoadState.idle;
+    selectedSource = null;
+    authorsState = LoadState.idle;
+    topAuthors = [];
+    authorDetailState = LoadState.idle;
+    selectedAuthor = null;
+    countryState = LoadState.idle;
+    countryBreakdown = [];
+    oaBreakdownState = LoadState.idle;
+    oaBreakdown = [];
+    relatedWorksState = LoadState.idle;
+    relatedWorks = [];
+    dashboardState = LoadState.idle;
+    dashboard = null;
+    detailState = LoadState.idle;
+    selectedWork = null;
+    _setError(null);
     notifyListeners();
   }
 
@@ -288,6 +356,21 @@ class SearchProvider extends ChangeNotifier {
     } on OpenAlexException catch (e) {
       _setError(e.message);
       authorDetailState = LoadState.error;
+    }
+    notifyListeners();
+  }
+
+  /// NEW: Load global top 10 authors from OpenAlex.
+  Future<void> loadGlobalTopAuthors() async {
+    globalTopAuthorsState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      globalTopAuthors = await _service.getGlobalTopAuthors();
+      globalTopAuthorsState = LoadState.success;
+    } catch (e) {
+      globalTopAuthorsState = LoadState.error;
+      _setError(e.toString());
     }
     notifyListeners();
   }

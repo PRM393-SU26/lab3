@@ -110,3 +110,17 @@ class OaStat {
   final int count;
   OaStat({required this.status, required this.count});
 }
+
+class SimpleAuthor {
+  final String id;
+  final String displayName;
+
+  SimpleAuthor({required this.id, required this.displayName});
+
+  factory SimpleAuthor.fromJson(Map<String, dynamic> json) {
+    return SimpleAuthor(
+      id: json['id'] ?? '',
+      displayName: json['display_name'] ?? 'Unknown',
+    );
+  }
+}

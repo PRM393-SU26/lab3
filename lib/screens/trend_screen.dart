@@ -529,12 +529,15 @@ class _BarChart extends StatelessWidget {
                       height: topLabelSlot,
                       child: Center(
                         child: isPeak
-                            ? Text(
-                                '${entry.count}',
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  color: _amber,
+                            ? FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '${entry.count}',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: _amber,
+                                  ),
                                 ),
                               )
                             : null,
@@ -542,6 +545,7 @@ class _BarChart extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Tooltip(
+                      triggerMode: TooltipTriggerMode.tap,
                       message: '${entry.year}: ${entry.count} papers',
                       child: Container(
                         width: 36,
@@ -564,14 +568,17 @@ class _BarChart extends StatelessWidget {
                     SizedBox(
                       height: bottomLabelSlot,
                       child: Center(
-                        child: Text(
-                          '${entry.year}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isPeak ? _amber : _slate400,
-                            fontWeight: isPeak
-                                ? FontWeight.w700
-                                : FontWeight.normal,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${entry.year}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isPeak ? _amber : _slate400,
+                              fontWeight: isPeak
+                                  ? FontWeight.w700
+                                  : FontWeight.normal,
+                            ),
                           ),
                         ),
                       ),

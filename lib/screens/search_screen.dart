@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/reading_list_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/search_provider.dart';
 import 'detail_screen.dart';
+import 'reading_list_screen.dart';
 import 'trend_screen.dart';
 import 'dashboard_screen.dart';
+import 'author_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -15,6 +19,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _searchFocusNode = FocusNode();
   
   bool _openAccessOnly = false;
   int? _yearFrom;
@@ -25,12 +30,17 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _searchFocusNode.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SearchProvider>().loadGlobalTopAuthors();
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -56,12 +66,43 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SearchProvider>();
+    final settings = context.watch<SettingsProvider>();
     final theme = Theme.of(context);
+
+    if (provider.globalTopAuthorsState == LoadState.idle) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<SearchProvider>().loadGlobalTopAuthors();
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
+        leading: provider.currentTopic.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back to Main',
+                onPressed: () {
+                  _searchController.clear();
+                  context.read<SearchProvider>().resetSearch();
+                },
+              )
+            : null,
         title: const Text('Journal Trend Analyzer'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmarks_outlined),
+            tooltip: 'Reading List',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ReadingListScreen()),
+            ),
+          ),
+          if (provider.currentTopic.isEmpty)
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Settings',
+              onPressed: () => _showSettingsModal(context),
+            ),
           if (provider.currentTopic.isNotEmpty) ...[
             IconButton(
               icon: const Icon(Icons.bar_chart),
@@ -108,6 +149,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         children: [
                           TextField(
                             controller: _searchController,
+                            focusNode: _searchFocusNode,
                             decoration: InputDecoration(
                               hintText: 'Search topic (e.g. machine learning)',
                               prefixIcon: const Icon(Icons.search),
@@ -136,6 +178,32 @@ class _SearchScreenState extends State<SearchScreen> {
                               _performSearch();
                             },
                           ),
+                          if (_searchFocusNode.hasFocus &&
+                              provider.suggestions.isEmpty &&
+                              provider.searchHistory.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Wrap(
+                                spacing: 6.0,
+                                runSpacing: 4.0,
+                                children: provider.searchHistory.map((query) {
+                                  return InputChip(
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    avatar: const Icon(Icons.history, size: 14),
+                                    label: Text(
+                                      query,
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                    onPressed: () {
+                                      _searchController.text = query;
+                                      _performSearch();
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                            ),
                           if (provider.suggestions.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 4),
@@ -280,7 +348,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         provider.currentTopic.isNotEmpty))
                   _buildSortBar(provider, theme),
                 Expanded(
-                  child: _buildResultsList(provider, theme),
+                  child: _buildResultsList(provider, theme, settings),
                 ),
               ],
             ),
@@ -392,7 +460,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildResultsList(SearchProvider provider, ThemeData theme) {
+  Widget _buildResultsList(SearchProvider provider, ThemeData theme, SettingsProvider settings) {
     if (provider.searchState == LoadState.idle && provider.works.isEmpty) {
       final List<String> suggestedTopics = [
         'Artificial Intelligence',
@@ -431,27 +499,135 @@ class _SearchScreenState extends State<SearchScreen> {
                 ],
               ),
             ),
-            Text(
-              'Suggested Topics',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+            if (provider.searchHistory.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent Searches',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        context.read<SearchProvider>().clearHistory(),
+                    child: const Text('Clear all'),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8.0,
-              runSpacing: 8.0,
-              children: suggestedTopics.map((topic) {
-                return ActionChip(
-                  avatar: Icon(Icons.trending_up, size: 16, color: theme.colorScheme.primary),
-                  label: Text(topic),
-                  onPressed: () {
-                    _searchController.text = topic;
-                    _performSearch();
-                  },
-                );
-              }).toList(),
-            ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 4.0,
+                children: provider.searchHistory.map((query) {
+                  return InputChip(
+                    avatar: const Icon(Icons.history, size: 16),
+                    label: Text(query),
+                    deleteIcon: const Icon(Icons.close, size: 14),
+                    onDeleted: () => context
+                        .read<SearchProvider>()
+                        .removeFromHistory(query),
+                    onPressed: () {
+                      _searchController.text = query;
+                      _performSearch();
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+            ],
+            if (settings.showSuggestedTopics) ...[
+              Text(
+                'Suggested Topics',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: suggestedTopics.map((topic) {
+                  return ActionChip(
+                    avatar: Icon(Icons.trending_up, size: 16, color: theme.colorScheme.primary),
+                    label: Text(topic),
+                    onPressed: () {
+                      _searchController.text = topic;
+                      _performSearch();
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 32),
+            ],
+            if (settings.showTopAuthors) ...[
+              Text(
+                'Top 10 Contributing Authors',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (provider.globalTopAuthorsState == LoadState.loading)
+                const SizedBox(
+                  height: 100,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (provider.globalTopAuthorsState == LoadState.error)
+                Card(
+                  elevation: 0,
+                  color: theme.colorScheme.errorContainer.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: theme.colorScheme.error.withOpacity(0.3)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: theme.colorScheme.error),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Failed to load top authors.',
+                            style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => context.read<SearchProvider>().loadGlobalTopAuthors(),
+                          child: const Text('Retry'),
+                        )
+                      ],
+                    ),
+                  ),
+                )
+              else ...[
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 8.0,
+                  children: provider.globalTopAuthors.map((author) {
+                    return ActionChip(
+                      avatar: Icon(Icons.person, size: 16, color: theme.colorScheme.primary),
+                      label: Text(author.displayName),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AuthorDetailScreen(
+                              authorId: author.id,
+                              authorName: author.displayName,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ],
           ],
         ),
       );
@@ -496,6 +672,8 @@ class _SearchScreenState extends State<SearchScreen> {
         }
 
         final work = provider.works[index];
+        final readingList = context.watch<ReadingListProvider>();
+        final isSaved = readingList.contains(work.id);
         return Card(
           elevation: 2,
           margin: const EdgeInsets.symmetric(vertical: 6),
@@ -546,6 +724,17 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           ),
                         ),
+                      IconButton(
+                        icon: Icon(
+                          isSaved ? Icons.bookmark : Icons.bookmark_border,
+                        ),
+                        color: isSaved ? theme.colorScheme.primary : null,
+                        iconSize: 20,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () =>
+                            context.read<ReadingListProvider>().toggle(work),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -604,6 +793,176 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSettingsModal(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return _SettingsDialog();
+      },
+    );
+  }
+}
+
+class _SettingsDialog extends StatelessWidget {
+  static const List<Color> _themeColors = [
+    Color(0xFF1D9E75), // Default green
+    Color(0xFF2196F3), // Blue
+    Color(0xFF9C27B0), // Purple
+    Color(0xFFE91E63), // Pink
+    Color(0xFFFF9800), // Orange
+    Color(0xFF009688), // Teal
+    Color(0xFF3F51B5), // Indigo
+    Color(0xFF795548), // Brown
+    Color(0xFF607D8B), // Blue Grey
+    Color(0xFFF44336), // Red
+    Color(0xFF4CAF50), // Light Green
+    Color(0xFF00BCD4), // Cyan
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+    final theme = Theme.of(context);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Settings',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Theme Color
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Theme', style: theme.textTheme.bodyLarge),
+                GestureDetector(
+                  onTap: () => _showColorPicker(context, settings),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: settings.seedColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.palette, size: 16, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Pick color',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+            // Suggested Topics Toggle
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text('Suggested Topics', style: theme.textTheme.bodyLarge),
+                ),
+                Switch(
+                  value: settings.showSuggestedTopics,
+                  onChanged: (v) => settings.setShowSuggestedTopics(v),
+                ),
+              ],
+            ),
+            // Top Contributing Authors Toggle
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text('Top contributing authors', style: theme.textTheme.bodyLarge),
+                ),
+                Switch(
+                  value: settings.showTopAuthors,
+                  onChanged: (v) => settings.setShowTopAuthors(v),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showColorPicker(BuildContext context, SettingsProvider settings) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Choose Theme Color'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: SizedBox(
+            width: 280,
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: _themeColors.map((color) {
+                final isSelected = settings.seedColor.value == color.value;
+                return GestureDetector(
+                  onTap: () {
+                    settings.setSeedColor(color);
+                    Navigator.pop(ctx);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? Colors.white : Colors.transparent,
+                        width: 3,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: color.withOpacity(0.5),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check, color: Colors.white, size: 24)
+                        : null,
+                  ),
+                );
+              }).toList(),
             ),
           ),
         );

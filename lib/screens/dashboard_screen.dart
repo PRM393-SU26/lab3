@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
+import '../models/analytics.dart';
 import '../models/author_detail.dart';
+import '../services/dashboard_export_service.dart';
 import '../services/search_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -11,6 +14,8 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  bool _isExporting = false;
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +33,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Dashboard: ${provider.currentTopic}'),
+        actions: [
+          if (db != null)
+            _isExporting
+                ? const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.ios_share_outlined),
+                    tooltip: 'Export Insights',
+                    onPressed: () =>
+                        _handleExport(context, db, provider.oaBreakdown),
+                  ),
+        ],
       ),
       body: Builder(
         builder: (context) {
@@ -229,6 +255,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _handleExport(
+    BuildContext context,
+    TopicDashboard db,
+    List<OaStat> oaBreakdown,
+  ) async {
+    setState(() => _isExporting = true);
+    try {
+      final pdfBytes =
+          await DashboardExportService.generatePdf(db, oaBreakdown);
+      if (!context.mounted) return;
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (_) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf_outlined),
+                title: const Text('Preview PDF'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Printing.layoutPdf(onLayout: (_) async => pdfBytes);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share_outlined),
+                title: const Text('Share PDF'),
+                onTap: () {
+                  Navigator.pop(context);
+                  DashboardExportService.sharePdf(pdfBytes, db.topic);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Export failed: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
   }
 
   Widget _buildKpiCard(
