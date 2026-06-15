@@ -30,6 +30,7 @@ class SearchProvider extends ChangeNotifier {
   SearchProvider({OpenAlexService? service})
       : _service = service ?? OpenAlexService() {
     loadHistory();
+    loadGlobalTopAuthors();
   }
 
   // ── Shared ────────────────────────────────────
@@ -81,6 +82,10 @@ class SearchProvider extends ChangeNotifier {
   // ── NEW: Author detail ────────────────────────
   LoadState authorDetailState = LoadState.idle;
   AuthorDetail? selectedAuthor;
+
+  // ── NEW: Global Top Authors ──────────────────
+  LoadState globalTopAuthorsState = LoadState.idle;
+  List<SimpleAuthor> globalTopAuthors = [];
 
   // ── NEW: Country breakdown ────────────────────
   LoadState countryState = LoadState.idle;
@@ -218,6 +223,43 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Reset all search and analytical states to return to the main discovery screen.
+  void resetSearch() {
+    _currentTopic = '';
+    works = [];
+    totalResults = 0;
+    _currentPage = 1;
+    _openAccessOnly = false;
+    _yearFrom = null;
+    _yearTo = null;
+    searchState = LoadState.idle;
+    suggestions = [];
+    trendState = LoadState.idle;
+    yearlyTrend = [];
+    topPapersState = LoadState.idle;
+    topPapers = [];
+    journalsState = LoadState.idle;
+    topJournals = [];
+    sourceDetailState = LoadState.idle;
+    selectedSource = null;
+    authorsState = LoadState.idle;
+    topAuthors = [];
+    authorDetailState = LoadState.idle;
+    selectedAuthor = null;
+    countryState = LoadState.idle;
+    countryBreakdown = [];
+    oaBreakdownState = LoadState.idle;
+    oaBreakdown = [];
+    relatedWorksState = LoadState.idle;
+    relatedWorks = [];
+    dashboardState = LoadState.idle;
+    dashboard = null;
+    detailState = LoadState.idle;
+    selectedWork = null;
+    _setError(null);
+    notifyListeners();
+  }
+
   /// Re-fetch results with a new sort order (resets pagination).
   Future<void> setSortBy(WorkSortOption sort) async {
     if (_sortBy == sort || _currentTopic.isEmpty) return;
@@ -314,6 +356,21 @@ class SearchProvider extends ChangeNotifier {
     } on OpenAlexException catch (e) {
       _setError(e.message);
       authorDetailState = LoadState.error;
+    }
+    notifyListeners();
+  }
+
+  /// NEW: Load global top 10 authors from OpenAlex.
+  Future<void> loadGlobalTopAuthors() async {
+    globalTopAuthorsState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      globalTopAuthors = await _service.getGlobalTopAuthors();
+      globalTopAuthorsState = LoadState.success;
+    } catch (e) {
+      globalTopAuthorsState = LoadState.error;
+      _setError(e.toString());
     }
     notifyListeners();
   }
