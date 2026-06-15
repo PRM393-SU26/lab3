@@ -6,6 +6,7 @@ import 'detail_screen.dart';
 import 'reading_list_screen.dart';
 import 'trend_screen.dart';
 import 'dashboard_screen.dart';
+import 'author_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -29,6 +30,9 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _searchFocusNode.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SearchProvider>().loadGlobalTopAuthors();
+    });
   }
 
   @override
@@ -63,8 +67,24 @@ class _SearchScreenState extends State<SearchScreen> {
     final provider = context.watch<SearchProvider>();
     final theme = Theme.of(context);
 
+    if (provider.globalTopAuthorsState == LoadState.idle) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<SearchProvider>().loadGlobalTopAuthors();
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
+        leading: provider.currentTopic.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back to Main',
+                onPressed: () {
+                  _searchController.clear();
+                  context.read<SearchProvider>().resetSearch();
+                },
+              )
+            : null,
         title: const Text('Journal Trend Analyzer'),
         actions: [
           IconButton(
@@ -530,6 +550,72 @@ class _SearchScreenState extends State<SearchScreen> {
                 );
               }).toList(),
             ),
+            const SizedBox(height: 32),
+            Text(
+              'Top 10 Contributing Authors',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (provider.globalTopAuthorsState == LoadState.loading)
+              const SizedBox(
+                height: 100,
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (provider.globalTopAuthorsState == LoadState.error)
+              Card(
+                elevation: 0,
+                color: theme.colorScheme.errorContainer.withOpacity(0.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: theme.colorScheme.error.withOpacity(0.3)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: theme.colorScheme.error),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Failed to load top authors.',
+                          style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => context.read<SearchProvider>().loadGlobalTopAuthors(),
+                        child: const Text('Retry'),
+                      )
+                    ],
+                  ),
+                ),
+              )
+            else ...[
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: provider.globalTopAuthors.map((author) {
+                  return ActionChip(
+                    avatar: Icon(Icons.person, size: 16, color: theme.colorScheme.primary),
+                    label: Text(author.displayName),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AuthorDetailScreen(
+                            authorId: author.id,
+                            authorName: author.displayName,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
           ],
         ),
       );

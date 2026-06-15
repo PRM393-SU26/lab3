@@ -382,6 +382,18 @@ class OpenAlexService {
     return AuthorDetail.fromJson(data);
   }
 
+  /// Returns top 10 contributing authors globally.
+  Future<List<SimpleAuthor>> getGlobalTopAuthors() async {
+    final data = await _get('/authors', {
+      'per_page': '10',
+      'sort': 'works_count:desc',
+      'select': 'id,display_name',
+    });
+    return (data['results'] as List? ?? [])
+        .map((e) => SimpleAuthor.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   // ─────────────────────────────────────────────
   // 4.7  RESEARCH DASHBOARD
   // ─────────────────────────────────────────────
