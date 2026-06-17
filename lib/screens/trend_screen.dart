@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/search_provider.dart';
+import '../models/analytics.dart';
 import 'author_detail_screen.dart';
 import 'detail_screen.dart';
 import 'source_detail_screen.dart';
@@ -906,6 +907,9 @@ class _TopJournalsTab extends StatelessWidget {
 
   static const _indigo      = Color(0xFF4F46E5);
   static const _indigoLight = Color(0xFFEEF2FF);
+  static const _slate200    = Color(0xFFE2E8F0);
+  static const _slate900    = Color(0xFF0F172A);
+  static const _slate600    = Color(0xFF475569);
 
   const _TopJournalsTab({required this.provider});
 
@@ -921,32 +925,687 @@ class _TopJournalsTab extends StatelessWidget {
     final maxCount =
         provider.topJournals.map((e) => e.paperCount).fold(0, max);
 
-    return _RankedBarList(
-      items: provider.topJournals
-          .map((j) => _RankItem(
-                id: j.sourceId,
-                name: j.displayName,
-                count: j.paperCount,
-                subtitle: '${j.paperCount} papers',
-              ))
-          .toList(),
-      maxCount: maxCount,
-      color: _indigo,
-      bgColor: _indigoLight,
-      icon: Icons.menu_book_rounded,
-      onItemTap: (item) {
-        if (item.id == null) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SourceDetailScreen(
-              sourceId: item.id!,
-              sourceName: item.name,
+    // Find the journal with max paperCount for display
+    final topJournal = provider.topJournals.reduce((a, b) => a.paperCount > b.paperCount ? a : b);
+    // Find max hIndex
+    final maxHIndex = provider.topJournals.map((e) => e.hIndex).fold(0, max);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Stat cards ─────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  label: 'Total Journals',
+                  value: '${provider.topJournals.length}',
+                  icon: Icons.menu_book_rounded,
+                  color: _indigo,
+                  bgColor: _indigoLight,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StatCard(
+                  label: 'Max H-Index',
+                  value: '$maxHIndex',
+                  icon: Icons.show_chart_rounded,
+                  color: const Color(0xFFD97706), // amber
+                  bgColor: const Color(0xFFFEF3C7), // amberLight
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StatCard(
+                  label: 'Top Journal',
+                  value: topJournal.displayName,
+                  icon: Icons.emoji_events_rounded,
+                  color: const Color(0xFF059669), // emerald
+                  bgColor: const Color(0xFFD1FAE5), // emeraldLight
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Bubble Chart section ───────────────────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _slate200),
+              boxShadow: [
+                BoxShadow(
+                  color: _slate900.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Journal Matrix (Bubble)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: _slate900,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'X: H-Index · Y: Papers · Color/Size: Citations',
+                          style: TextStyle(fontSize: 11, color: _slate600),
+                        ),
+                      ],
+                    ),
+                    // Legend
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Citations',
+                          style: TextStyle(fontSize: 9, color: _slate600, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Text('Min', style: TextStyle(fontSize: 8, color: _slate600)),
+                            const SizedBox(width: 4),
+                            Container(
+                              width: 50,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(3),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF0000FF), // Blue
+                                    Color(0xFF00FFFF), // Cyan
+                                    Color(0xFF00FF00), // Green
+                                    Color(0xFFFFFF00), // Yellow
+                                    Color(0xFFFF0000), // Red
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text('Max', style: TextStyle(fontSize: 8, color: _slate600)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 240,
+                  child: _BubbleChart(data: provider.topJournals),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Journal Rankings Title ──────────────────────────────
+          const Text(
+            'Journal Rankings',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: _slate900,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Journal Rankings List ───────────────────────────────
+          ...List.generate(provider.topJournals.length, (index) {
+            final j = provider.topJournals[index];
+            final ratio = maxCount > 0 ? j.paperCount / maxCount : 0.0;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _slate200),
+                boxShadow: [
+                  BoxShadow(
+                    color: _slate900.withOpacity(0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () {
+                    if (j.sourceId == null) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SourceDetailScreen(
+                          sourceId: j.sourceId!,
+                          sourceName: j.displayName,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Rank number
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: index == 0 ? _indigo : _indigoLight,
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: index == 0 ? Colors.white : _indigo,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Name + subtitle + bar
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                j.displayName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: _slate900,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    '${j.paperCount} papers',
+                                    style: const TextStyle(fontSize: 10, color: _slate600, fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(width: 3, height: 3, decoration: const BoxDecoration(color: _slate600, shape: BoxShape.circle)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'H-Index: ${j.hIndex}',
+                                    style: const TextStyle(fontSize: 10, color: _slate600, fontWeight: FontWeight.w600),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(width: 3, height: 3, decoration: const BoxDecoration(color: _slate600, shape: BoxShape.circle)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Citations: ${_formatNumber(j.citationCount)}',
+                                    style: const TextStyle(fontSize: 10, color: _slate600, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              // Progress bar
+                              Stack(
+                                children: [
+                                  Container(
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: _indigoLight,
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                  ),
+                                  FractionallySizedBox(
+                                    widthFactor: ratio,
+                                    child: Container(
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color: _indigo,
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Icon(Icons.chevron_right_rounded, color: _slate600, size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  static String _formatNumber(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
+  }
+}
+
+class _BubbleChart extends StatefulWidget {
+  final List<JournalStat> data;
+
+  const _BubbleChart({required this.data});
+
+  @override
+  State<_BubbleChart> createState() => _BubbleChartState();
+}
+
+class _BubbleChartState extends State<_BubbleChart> {
+  int? _selectedIndex;
+
+  Color _getRGBColor(double ratio) {
+    ratio = ratio.clamp(0.0, 1.0);
+    final colors = [
+      const Color(0xFF0000FF), // Blue (0, 0, 255)
+      const Color(0xFF00FFFF), // Cyan (0, 255, 255)
+      const Color(0xFF00FF00), // Green (0, 255, 0)
+      const Color(0xFFFFFF00), // Yellow (255, 255, 0)
+      const Color(0xFFFF0000), // Red (255, 0, 0)
+    ];
+    if (ratio == 0.0) return colors.first;
+    if (ratio == 1.0) return colors.last;
+
+    final double segment = 1.0 / (colors.length - 1); // 0.25
+    final int index = (ratio / segment).floor();
+    final double localRatio = (ratio - index * segment) / segment;
+
+    return Color.lerp(colors[index], colors[index + 1], localRatio)!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.data.isEmpty) return const SizedBox.shrink();
+
+    // Calculate ranges
+    int maxHIndex = widget.data.map((e) => e.hIndex).fold(0, max);
+    if (maxHIndex <= 0) maxHIndex = 50; // default minimum scale
+    int maxPaperCount = widget.data.map((e) => e.paperCount).fold(0, max);
+    if (maxPaperCount <= 0) maxPaperCount = 10;
+    int maxCitations = widget.data.map((e) => e.citationCount).fold(0, max);
+    if (maxCitations <= 0) maxCitations = 1000;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+        final double height = constraints.maxHeight;
+
+        final double paddingLeft = 32.0;
+        final double paddingRight = 16.0;
+        final double paddingTop = 20.0;
+        final double paddingBottom = 32.0;
+
+        final double chartWidth = width - paddingLeft - paddingRight;
+        final double chartHeight = height - paddingTop - paddingBottom;
+
+        // Map data points to positions
+        final List<Offset> points = [];
+        final List<double> radii = [];
+        final List<Color> colors = [];
+
+        for (var stat in widget.data) {
+          final double xRatio = maxHIndex > 0 ? stat.hIndex / maxHIndex : 0.0;
+          final double yRatio = maxPaperCount > 0 ? stat.paperCount / maxPaperCount : 0.0;
+          final double citeRatio = maxCitations > 0 ? stat.citationCount / maxCitations : 0.0;
+
+          final double px = paddingLeft + xRatio * chartWidth;
+          final double py = paddingTop + (1.0 - yRatio) * chartHeight;
+
+          points.add(Offset(px, py));
+
+          // Radius between 6.0 and 20.0
+          final double r = 6.0 + citeRatio * 14.0;
+          radii.add(r);
+
+          // Color based on citation count (0-255 RGB spread)
+          final Color bubbleColor = _getRGBColor(citeRatio);
+          colors.add(bubbleColor);
+        }
+
+        return GestureDetector(
+          onTapDown: (details) {
+            final RenderBox renderBox = context.findRenderObject() as RenderBox;
+            final localPosition = renderBox.globalToLocal(details.globalPosition);
+
+            int? closestIndex;
+            double minDistance = double.infinity;
+
+            for (int i = 0; i < points.length; i++) {
+              final double dist = (localPosition - points[i]).distance;
+              // If tap is within the bubble radius + 15px margin
+              if (dist < radii[i] + 15.0 && dist < minDistance) {
+                minDistance = dist;
+                closestIndex = i;
+              }
+            }
+
+            setState(() {
+              _selectedIndex = (_selectedIndex == closestIndex) ? null : closestIndex;
+            });
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _BubbleChartPainter(
+                    data: widget.data,
+                    points: points,
+                    radii: radii,
+                    colors: colors,
+                    maxHIndex: maxHIndex,
+                    maxPaperCount: maxPaperCount,
+                    selectedIndex: _selectedIndex,
+                    paddingLeft: paddingLeft,
+                    paddingRight: paddingRight,
+                    paddingTop: paddingTop,
+                    paddingBottom: paddingBottom,
+                  ),
+                ),
+              ),
+
+              // Tooltip overlay
+              if (_selectedIndex != null && _selectedIndex! < widget.data.length) () {
+                final stat = widget.data[_selectedIndex!];
+                final pt = points[_selectedIndex!];
+                final r = radii[_selectedIndex!];
+
+                // Determine tooltip position
+                final double tooltipW = 160.0;
+                final double tooltipH = 80.0;
+                final double tx = (pt.dx - tooltipW / 2).clamp(10.0, width - tooltipW - 10.0);
+                double ty = pt.dy - r - tooltipH - 8;
+                if (ty < 5.0) {
+                  ty = pt.dy + r + 8;
+                }
+
+                return Positioned(
+                  left: tx,
+                  top: ty,
+                  width: tooltipW,
+                  height: tooltipH,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A), // Slate 900
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          stat.displayName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'H-Index:',
+                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9),
+                            ),
+                            Text(
+                              '${stat.hIndex}',
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Papers:',
+                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9),
+                            ),
+                            Text(
+                              '${stat.paperCount}',
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Citations:',
+                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 9),
+                            ),
+                            Text(
+                              _formatNumber(stat.citationCount),
+                              style: const TextStyle(color: Color(0xFFFCD34D), fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }(),
+            ],
           ),
         );
       },
     );
+  }
+
+  static String _formatNumber(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
+  }
+}
+
+class _BubbleChartPainter extends CustomPainter {
+  final List<JournalStat> data;
+  final List<Offset> points;
+  final List<double> radii;
+  final List<Color> colors;
+  final int maxHIndex;
+  final int maxPaperCount;
+  final int? selectedIndex;
+  final double paddingLeft;
+  final double paddingRight;
+  final double paddingTop;
+  final double paddingBottom;
+
+  _BubbleChartPainter({
+    required this.data,
+    required this.points,
+    required this.radii,
+    required this.colors,
+    required this.maxHIndex,
+    required this.maxPaperCount,
+    required this.selectedIndex,
+    required this.paddingLeft,
+    required this.paddingRight,
+    required this.paddingTop,
+    required this.paddingBottom,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double chartWidth = size.width - paddingLeft - paddingRight;
+    final double chartHeight = size.height - paddingTop - paddingBottom;
+
+    // Draw grid lines
+    final gridPaint = Paint()
+      ..color = const Color(0xFFF1F5F9)
+      ..strokeWidth = 1.0;
+
+    final axisPaint = Paint()
+      ..color = const Color(0xFFCBD5E1)
+      ..strokeWidth = 1.5;
+
+    // Horizontal grid lines (Y-axis ticks)
+    for (int i = 0; i <= 4; i++) {
+      final double y = paddingTop + chartHeight * (1.0 - i / 4.0);
+      canvas.drawLine(Offset(paddingLeft, y), Offset(paddingLeft + chartWidth, y), gridPaint);
+
+      // Y-axis labels (papers)
+      final int paperVal = (maxPaperCount * i / 4).round();
+      final textSpan = TextSpan(
+        text: '$paperVal',
+        style: const TextStyle(
+          color: Color(0xFF64748B),
+          fontSize: 8.5,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(paddingLeft - textPainter.width - 6, y - textPainter.height / 2),
+      );
+    }
+
+    // Vertical grid lines (X-axis ticks)
+    for (int i = 0; i <= 4; i++) {
+      final double x = paddingLeft + chartWidth * (i / 4.0);
+      canvas.drawLine(Offset(x, paddingTop), Offset(x, paddingTop + chartHeight), gridPaint);
+
+      // X-axis labels (h-index)
+      final int hVal = (maxHIndex * i / 4).round();
+      final textSpan = TextSpan(
+        text: '$hVal',
+        style: const TextStyle(
+          color: Color(0xFF64748B),
+          fontSize: 8.5,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(x - textPainter.width / 2, paddingTop + chartHeight + 6),
+      );
+    }
+
+    // Draw Y axis line
+    canvas.drawLine(
+      Offset(paddingLeft, paddingTop),
+      Offset(paddingLeft, paddingTop + chartHeight),
+      axisPaint,
+    );
+
+    // Draw X axis line
+    canvas.drawLine(
+      Offset(paddingLeft, paddingTop + chartHeight),
+      Offset(paddingLeft + chartWidth, paddingTop + chartHeight),
+      axisPaint,
+    );
+
+    // Axis titles
+    const xTitleSpan = TextSpan(
+      text: 'Journal H-Index',
+      style: TextStyle(
+        color: Color(0xFF475569),
+        fontSize: 9.5,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    final xTitlePainter = TextPainter(
+      text: xTitleSpan,
+      textDirection: TextDirection.ltr,
+    );
+    xTitlePainter.layout();
+    xTitlePainter.paint(
+      canvas,
+      Offset(paddingLeft + chartWidth / 2 - xTitlePainter.width / 2, paddingTop + chartHeight + 20),
+    );
+
+    // Draw bubbles
+    for (int i = 0; i < points.length; i++) {
+      final pt = points[i];
+      final r = radii[i];
+      final baseColor = colors[i];
+      final isSelected = selectedIndex == i;
+
+      // Draw shadow/glow under selected bubble
+      if (isSelected) {
+        final glowPaint = Paint()
+          ..color = baseColor.withOpacity(0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+        canvas.drawCircle(pt, r + 4.0, glowPaint);
+      }
+
+      // Fill
+      final fillPaint = Paint()
+        ..color = isSelected ? baseColor : baseColor.withOpacity(0.7)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(pt, r, fillPaint);
+
+      // Border
+      final borderPaint = Paint()
+        ..color = isSelected ? Colors.white : baseColor
+        ..strokeWidth = isSelected ? 2.0 : 1.0;
+      borderPaint.style = PaintingStyle.stroke;
+      canvas.drawCircle(pt, r, borderPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BubbleChartPainter oldDelegate) {
+    return oldDelegate.selectedIndex != selectedIndex ||
+        oldDelegate.points != points ||
+        oldDelegate.radii != radii ||
+        oldDelegate.colors != colors;
   }
 }
 
@@ -1726,172 +2385,7 @@ class _CountryTopicHeatmapCard extends StatelessWidget {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Shared: Ranked Bar List
-// ────────────────────────────────────────────────────────────────────────────
 
-class _RankItem {
-  final String? id;
-  final String name;
-  final int count;
-  final String subtitle;
-  const _RankItem({
-    this.id,
-    required this.name,
-    required this.count,
-    required this.subtitle,
-  });
-}
-
-class _RankedBarList extends StatelessWidget {
-  final List<_RankItem> items;
-  final int maxCount;
-  final Color color;
-  final Color bgColor;
-  final IconData icon;
-  final void Function(_RankItem item)? onItemTap;
-
-  static const _slate100 = Color(0xFFF1F5F9);
-  static const _slate200 = Color(0xFFE2E8F0);
-  static const _slate400 = Color(0xFF94A3B8);
-  static const _slate600 = Color(0xFF475569);
-  static const _slate900 = Color(0xFF0F172A);
-
-  const _RankedBarList({
-    required this.items,
-    required this.maxCount,
-    required this.color,
-    required this.bgColor,
-    required this.icon,
-    this.onItemTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        final ratio = maxCount > 0 ? item.count / maxCount : 0.0;
-
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onItemTap != null && item.id != null
-                ? () => onItemTap!(item)
-                : null,
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _slate200),
-            boxShadow: [
-              BoxShadow(
-                color: _slate900.withOpacity(0.03),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Rank number
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: index == 0 ? color : bgColor,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '${index + 1}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: index == 0 ? Colors.white : color,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Name + bar
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: _slate900,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    // Progress bar
-                    Stack(
-                      children: [
-                        Container(
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: bgColor,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                        FractionallySizedBox(
-                          widthFactor: ratio,
-                          child: Container(
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              // Count chip
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  item.subtitle,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
-                ),
-              ),
-              if (onItemTap != null && item.id != null) ...[
-                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right_rounded,
-                    color: _slate400, size: 20),
-              ],
-            ],
-          ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Shared small widgets

@@ -82,6 +82,7 @@ class SearchProvider extends ChangeNotifier {
   // ── NEW: Author detail ────────────────────────
   LoadState authorDetailState = LoadState.idle;
   AuthorDetail? selectedAuthor;
+  List<Work> authorWorks = [];
 
   // ── NEW: Global Top Authors ──────────────────
   LoadState globalTopAuthorsState = LoadState.idle;
@@ -248,6 +249,7 @@ class SearchProvider extends ChangeNotifier {
     topAuthors = [];
     authorDetailState = LoadState.idle;
     selectedAuthor = null;
+    authorWorks = [];
     countryState = LoadState.idle;
     countryBreakdown = [];
     countryMatrixState = LoadState.idle;
@@ -353,11 +355,13 @@ class SearchProvider extends ChangeNotifier {
   /// NEW: Load author profile. Call when user taps an author.
   Future<void> loadAuthorDetail(String authorId) async {
     selectedAuthor = null;
+    authorWorks = [];
     authorDetailState = LoadState.loading;
     notifyListeners();
 
     try {
       selectedAuthor = await _service.getAuthorDetail(authorId);
+      authorWorks = await _service.getAuthorWorks(authorId);
       authorDetailState = LoadState.success;
     } on OpenAlexException catch (e) {
       _setError(e.message);

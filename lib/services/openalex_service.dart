@@ -379,7 +379,7 @@ class OpenAlexService {
     });
 
     final groups = data['group_by'] as List? ?? [];
-    return groups
+    final List<JournalStat> rawList = groups
         .where((g) =>
             g['key_display_name'] != null &&
             g['key_display_name'].toString().isNotEmpty)
@@ -390,6 +390,26 @@ class OpenAlexService {
             ))
         .take(limit)
         .toList();
+
+    final List<JournalStat> enrichedList = await Future.wait(rawList.map((stat) async {
+      if (stat.sourceId != null && stat.sourceId!.isNotEmpty) {
+        try {
+          final detail = await getSourceDetail(stat.sourceId!);
+          return JournalStat(
+            sourceId: stat.sourceId,
+            displayName: stat.displayName,
+            paperCount: stat.paperCount,
+            hIndex: detail.hIndex,
+            citationCount: detail.citedByCount,
+          );
+        } catch (e) {
+          return stat;
+        }
+      }
+      return stat;
+    }));
+
+    return enrichedList;
   }
 
   // ─────────────────────────────────────────────
@@ -516,6 +536,24 @@ class OpenAlexService {
       avgCitations: avg,
       openAccessRatio: oaRatio,
     );
+  }
+
+  Future<List<Work>> getAuthorWorks(
+    String authorId, {
+    int limit = 50,
+  }) async {
+    final id = authorId.replaceFirst('https://openalex.org/', '');
+    final data = await _get('/works', {
+      'filter': 'authorships.author.id:$id',
+      'sort': 'publication_year:desc',
+      'per_page': limit.toString(),
+      'select':
+          'id,title,publication_year,cited_by_count,doi,open_access,authorships,primary_location,type',
+    });
+
+    return (data['results'] as List? ?? [])
+        .map((e) => Work.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   void dispose() => _client.close();
