@@ -53,6 +53,8 @@ class _SearchScreenState extends State<SearchScreen> {
       context.read<SearchProvider>().search(
         query,
       );
+      context.read<SearchProvider>().loadTrendAnalysis();
+      context.read<SearchProvider>().loadDashboard();
     }
   }
 
@@ -68,40 +70,42 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: provider.currentTopic.isNotEmpty
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                tooltip: 'Back to Main',
-                onPressed: () {
-                  _searchController.clear();
-                  context.read<SearchProvider>().resetSearch();
-                },
-              )
-            : null,
-        title: const Text('Journal Trend Analyzer'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bookmarks_outlined),
-            tooltip: 'Reading List',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ReadingListScreen()),
-            ),
-          ),
-          if (provider.currentTopic.isEmpty)
+    return DefaultTabController(
+      length: 7,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: provider.currentTopic.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: 'Back to Main',
+                  onPressed: () {
+                    _searchController.clear();
+                    context.read<SearchProvider>().resetSearch();
+                  },
+                )
+              : null,
+          title: const Text('Journal Trend Analyzer'),
+          actions: [
             IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: 'Settings',
-              onPressed: () => _showSettingsModal(context),
+              icon: const Icon(Icons.bookmarks_outlined),
+              tooltip: 'Reading List',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReadingListScreen()),
+              ),
             ),
+            if (provider.currentTopic.isEmpty)
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                tooltip: 'Settings',
+                onPressed: () => _showSettingsModal(context),
+              ),
 
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search & Filter Panel
+          ],
+        ),
+        body: Column(
+          children: [
+            // Search & Filter Panel
           ConstrainedBox(
             constraints: BoxConstraints(
               maxHeight: MediaQuery.sizeOf(context).height * 0.45,
@@ -245,57 +249,55 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           ),
-          
           // Results Area
           Expanded(
-            child: Column(
+            child: TabBarView(
               children: [
-                if (provider.works.isNotEmpty ||
-                    (provider.searchState == LoadState.loading &&
-                        provider.currentTopic.isNotEmpty))
-                  _buildSortBar(provider, theme),
-                Expanded(
-                  child: _buildResultsList(provider, theme, settings),
+                Column(
+                  children: [
+                    if (provider.works.isNotEmpty ||
+                        (provider.searchState == LoadState.loading &&
+                            provider.currentTopic.isNotEmpty))
+                      _buildSortBar(provider, theme),
+                    Expanded(
+                      child: _buildResultsList(provider, theme, settings),
+                    ),
+                  ],
                 ),
+                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : YearlyTrendTab(provider: provider),
+                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : const DashboardScreen(),
+                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : TopPapersTab(provider: provider),
+                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : TopJournalsTab(provider: provider),
+                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : TopAuthorsTab(provider: provider),
+                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : CountriesTab(provider: provider),
               ],
             ),
           ),
         ],
       ),
-      bottomNavigationBar: provider.currentTopic.isNotEmpty
-          ? BottomAppBar(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child: TextButton.icon(
-                      icon: const Icon(Icons.bar_chart),
-                      label: const Text('Trend Analysis'),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const TrendScreen()),
-                        );
-                      },
-                    ),
-                  ),
-                  const VerticalDivider(),
-                  Expanded(
-                    child: TextButton.icon(
-                      icon: const Icon(Icons.dashboard),
-                      label: const Text('Dashboard'),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : null,
+      bottomNavigationBar: Material(
+        elevation: 8,
+        color: theme.colorScheme.surface,
+        child: SafeArea(
+          child: TabBar(
+            isScrollable: true,
+            indicatorColor: theme.colorScheme.primary,
+            labelColor: theme.colorScheme.primary,
+            unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+            tabAlignment: TabAlignment.start,
+            tabs: const [
+              Tab(icon: Icon(Icons.article), text: 'Paper'),
+              Tab(icon: Icon(Icons.show_chart), text: 'Yearly Trend'),
+              Tab(icon: Icon(Icons.dashboard), text: 'Dashboard'),
+              Tab(icon: Icon(Icons.workspace_premium), text: 'Top Papers'),
+              Tab(icon: Icon(Icons.menu_book), text: 'Journals'),
+              Tab(icon: Icon(Icons.people), text: 'Authors'),
+              Tab(icon: Icon(Icons.public), text: 'Countries'),
+            ],
+          ),
+        ),
+      ),
+      ),
     );
   }
 

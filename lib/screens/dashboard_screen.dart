@@ -30,37 +30,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final theme = Theme.of(context);
     final db = provider.dashboard;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Dashboard: ${provider.currentTopic}'),
-        actions: [
-          if (db != null)
-            _isExporting
-                ? const Padding(
-                    padding: EdgeInsets.all(14),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.ios_share_outlined),
-                    tooltip: 'Export Insights',
-                    onPressed: () =>
-                        _handleExport(context, db, provider.oaBreakdown),
-                  ),
-        ],
-      ),
-      body: Builder(
-        builder: (context) {
-          if (provider.dashboardState == LoadState.loading ||
-              provider.oaBreakdownState == LoadState.loading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return Builder(
+      builder: (context) {
+        if (provider.dashboardState == LoadState.loading ||
+            provider.oaBreakdownState == LoadState.loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
           if (provider.dashboardState == LoadState.error) {
             return Center(
               child: Column(
@@ -94,9 +69,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Overview Statistics',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Overview Statistics',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    _isExporting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : IconButton(
+                            icon: const Icon(Icons.ios_share_outlined),
+                            tooltip: 'Export Insights',
+                            onPressed: () =>
+                                _handleExport(context, db, provider.oaBreakdown),
+                          ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 
@@ -253,8 +245,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           );
         },
-      ),
-    );
+      );
   }
 
   Future<void> _handleExport(
