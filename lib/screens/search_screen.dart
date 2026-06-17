@@ -20,11 +20,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _searchFocusNode = FocusNode();
-  
-  bool _openAccessOnly = false;
-  int? _yearFrom;
-  int? _yearTo;
-  bool _showFilters = false;
+
 
   @override
   void initState() {
@@ -56,9 +52,6 @@ class _SearchScreenState extends State<SearchScreen> {
       context.read<SearchProvider>().clearSuggestions();
       context.read<SearchProvider>().search(
         query,
-        openAccessOnly: _openAccessOnly,
-        yearFrom: _yearFrom,
-        yearTo: _yearTo,
       );
     }
   }
@@ -103,28 +96,7 @@ class _SearchScreenState extends State<SearchScreen> {
               tooltip: 'Settings',
               onPressed: () => _showSettingsModal(context),
             ),
-          if (provider.currentTopic.isNotEmpty) ...[
-            IconButton(
-              icon: const Icon(Icons.bar_chart),
-              tooltip: 'Trend Analysis',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TrendScreen()),
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.dashboard),
-              tooltip: 'Dashboard',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
-                );
-              },
-            ),
-          ]
+
         ],
       ),
       body: Column(
@@ -249,11 +221,6 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      icon: Icon(_showFilters ? Icons.filter_list_off : Icons.filter_list),
-                      onPressed: () => setState(() => _showFilters = !_showFilters),
-                    ),
-                    const SizedBox(width: 8),
                     SizedBox(
                       height: 48,
                       child: ElevatedButton(
@@ -272,67 +239,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ],
                     ),
 
-                    // Expandable Filters
-                    if (_showFilters) ...[
-                  const SizedBox(height: 16),
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: theme.colorScheme.outlineVariant),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Filters', style: theme.textTheme.titleSmall),
-                          const SizedBox(height: 8),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Open Access Only'),
-                            value: _openAccessOnly,
-                            onChanged: (val) => setState(() => _openAccessOnly = val),
-                          ),
-                          const Divider(),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Year From',
-                                    hintText: 'e.g. 2018',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                  initialValue: _yearFrom?.toString(),
-                                  onChanged: (val) {
-                                    _yearFrom = int.tryParse(val);
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextFormField(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Year To',
-                                    hintText: 'e.g. 2023',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                  initialValue: _yearTo?.toString(),
-                                  onChanged: (val) {
-                                    _yearTo = int.tryParse(val);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                    ]
+
                   ],
                 ),
               ),
