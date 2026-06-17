@@ -194,11 +194,11 @@ class _TrendScreenState extends State<TrendScreen>
             : TabBarView(
                 controller: _tabController,
                 children: [
-                  _YearlyTrendTab(provider: provider),
-                  _TopPapersTab(provider: provider),
-                  _TopJournalsTab(provider: provider),
-                  _TopAuthorsTab(provider: provider),
-                  _CountriesTab(provider: provider),
+                  YearlyTrendTab(provider: provider),
+                  TopPapersTab(provider: provider),
+                  TopJournalsTab(provider: provider),
+                  TopAuthorsTab(provider: provider),
+                  CountriesTab(provider: provider),
                 ],
               ),
       ),
@@ -210,16 +210,16 @@ class _TrendScreenState extends State<TrendScreen>
 // Tab: Yearly Trend
 // ────────────────────────────────────────────────────────────────────────────
 
-class _YearlyTrendTab extends StatefulWidget {
+class YearlyTrendTab extends StatefulWidget {
   final SearchProvider provider;
 
-  const _YearlyTrendTab({required this.provider});
+  const YearlyTrendTab({super.key, required this.provider});
 
   @override
-  State<_YearlyTrendTab> createState() => _YearlyTrendTabState();
+  State<YearlyTrendTab> createState() => _YearlyTrendTabState();
 }
 
-class _YearlyTrendTabState extends State<_YearlyTrendTab> {
+class _YearlyTrendTabState extends State<YearlyTrendTab> {
   static const _indigo     = Color(0xFF4F46E5);
   static const _indigoLight= Color(0xFFEEF2FF);
   static const _indigoDark = Color(0xFF3730A3);
@@ -746,7 +746,7 @@ class _SummaryRow extends StatelessWidget {
 // Tab: Top Papers
 // ────────────────────────────────────────────────────────────────────────────
 
-class _TopPapersTab extends StatelessWidget {
+class TopPapersTab extends StatelessWidget {
   final SearchProvider provider;
 
   static const _indigo      = Color(0xFF4F46E5);
@@ -760,7 +760,7 @@ class _TopPapersTab extends StatelessWidget {
   static const _slate700    = Color(0xFF334155);
   static const _slate900    = Color(0xFF0F172A);
 
-  const _TopPapersTab({required this.provider});
+  const TopPapersTab({super.key, required this.provider});
 
   static const _medalColors = [
     Color(0xFFD97706), // gold
@@ -902,7 +902,7 @@ class _TopPapersTab extends StatelessWidget {
 // Tab: Top Journals
 // ────────────────────────────────────────────────────────────────────────────
 
-class _TopJournalsTab extends StatelessWidget {
+class TopJournalsTab extends StatelessWidget {
   final SearchProvider provider;
 
   static const _indigo      = Color(0xFF4F46E5);
@@ -911,7 +911,7 @@ class _TopJournalsTab extends StatelessWidget {
   static const _slate900    = Color(0xFF0F172A);
   static const _slate600    = Color(0xFF475569);
 
-  const _TopJournalsTab({required this.provider});
+  const TopJournalsTab({super.key, required this.provider});
 
   @override
   Widget build(BuildContext context) {
@@ -1613,7 +1613,7 @@ class _BubbleChartPainter extends CustomPainter {
 // Tab: Top Authors
 // ────────────────────────────────────────────────────────────────────────────
 
-class _TopAuthorsTab extends StatelessWidget {
+class TopAuthorsTab extends StatelessWidget {
   final SearchProvider provider;
 
   static const _violet      = Color(0xFF7C3AED);
@@ -1621,7 +1621,7 @@ class _TopAuthorsTab extends StatelessWidget {
   static const _slate900    = Color(0xFF0F172A);
   static const _slate200    = Color(0xFFE2E8F0);
 
-  const _TopAuthorsTab({required this.provider});
+  const TopAuthorsTab({super.key, required this.provider});
 
   @override
   Widget build(BuildContext context) {
@@ -1930,7 +1930,7 @@ class _HorizontalBarChart extends StatelessWidget {
 // Tab: Countries
 // ────────────────────────────────────────────────────────────────────────────
 
-class _CountriesTab extends StatelessWidget {
+class CountriesTab extends StatelessWidget {
   final SearchProvider provider;
 
   static const _emerald = Color(0xFF059669);
@@ -1939,7 +1939,7 @@ class _CountriesTab extends StatelessWidget {
   static const _slate600 = Color(0xFF475569);
   static const _slate200 = Color(0xFFE2E8F0);
 
-  const _CountriesTab({required this.provider});
+  const CountriesTab({super.key, required this.provider});
 
   @override
   Widget build(BuildContext context) {
