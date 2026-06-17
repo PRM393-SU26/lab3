@@ -10,7 +10,15 @@ class JournalStat {
   final String? sourceId;
   final String displayName;
   final int paperCount;
-  JournalStat({this.sourceId, required this.displayName, required this.paperCount});
+  final int hIndex;
+  final int citationCount;
+  JournalStat({
+    this.sourceId,
+    required this.displayName,
+    required this.paperCount,
+    this.hIndex = 0,
+    this.citationCount = 0,
+  });
 }
 
 /// One entry in the Top Authors list
