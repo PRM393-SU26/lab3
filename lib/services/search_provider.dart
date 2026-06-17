@@ -90,6 +90,8 @@ class SearchProvider extends ChangeNotifier {
   // ── NEW: Country breakdown ────────────────────
   LoadState countryState = LoadState.idle;
   List<CountryStat> countryBreakdown = [];
+  LoadState countryMatrixState = LoadState.idle;
+  CountryTopicMatrix countryMatrix = CountryTopicMatrix.empty();
 
   // ── NEW: OA breakdown ─────────────────────────
   LoadState oaBreakdownState = LoadState.idle;
@@ -248,6 +250,8 @@ class SearchProvider extends ChangeNotifier {
     selectedAuthor = null;
     countryState = LoadState.idle;
     countryBreakdown = [];
+    countryMatrixState = LoadState.idle;
+    countryMatrix = CountryTopicMatrix.empty();
     oaBreakdownState = LoadState.idle;
     oaBreakdown = [];
     relatedWorksState = LoadState.idle;
@@ -322,11 +326,13 @@ class SearchProvider extends ChangeNotifier {
     journalsState = LoadState.loading;
     authorsState = LoadState.loading;
     countryState = LoadState.loading;
+    countryMatrixState = LoadState.loading;
     notifyListeners();
 
     await _loadTrend();
     await Future.wait([_loadTopPapers(), _loadTopJournals()]);
     await Future.wait([_loadTopAuthors(), _loadCountryBreakdown()]);
+    await _loadCountryTopicMatrix();
 
     notifyListeners();
   }
@@ -442,6 +448,27 @@ class SearchProvider extends ChangeNotifier {
     } on OpenAlexException catch (e) {
       _setError(e.message);
       countryState = LoadState.error;
+    }
+  }
+
+  Future<void> _loadCountryTopicMatrix() async {
+    try {
+      if (countryBreakdown.isEmpty) {
+        countryMatrix = CountryTopicMatrix.empty();
+        countryMatrixState = LoadState.success;
+        return;
+      }
+      
+      final topics = [
+        _currentTopic,
+        ...searchHistory.where((t) => t.isNotEmpty && t != _currentTopic),
+      ].take(5).toList();
+
+      countryMatrix = await _service.getCountryTopicMatrix(topics, countryBreakdown);
+      countryMatrixState = LoadState.success;
+    } catch (e) {
+      _setError(e.toString());
+      countryMatrixState = LoadState.error;
     }
   }
 

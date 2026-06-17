@@ -20,20 +20,7 @@ class _TrendScreenState extends State<TrendScreen>
   // ── Design tokens (match SearchScreen) ─────────────────────────
   static const _indigo     = Color(0xFF4F46E5);
   static const _indigoDark = Color(0xFF3730A3);
-  static const _indigoLight= Color(0xFFEEF2FF);
-  static const _emerald    = Color(0xFF059669);
-  static const _emeraldLight = Color(0xFFD1FAE5);
-  static const _amber      = Color(0xFFD97706);
-  static const _amberLight = Color(0xFFFEF3C7);
-  static const _violet     = Color(0xFF7C3AED);
-  static const _violetLight= Color(0xFFF5F3FF);
   static const _slate50    = Color(0xFFF8FAFC);
-  static const _slate100   = Color(0xFFF1F5F9);
-  static const _slate200   = Color(0xFFE2E8F0);
-  static const _slate400   = Color(0xFF94A3B8);
-  static const _slate600   = Color(0xFF475569);
-  static const _slate700   = Color(0xFF334155);
-  static const _slate900   = Color(0xFF0F172A);
 
   @override
   void initState() {
@@ -235,12 +222,8 @@ class _YearlyTrendTabState extends State<_YearlyTrendTab> {
   static const _indigo     = Color(0xFF4F46E5);
   static const _indigoLight= Color(0xFFEEF2FF);
   static const _indigoDark = Color(0xFF3730A3);
-  static const _slate50    = Color(0xFFF8FAFC);
-  static const _slate100   = Color(0xFFF1F5F9);
   static const _slate200   = Color(0xFFE2E8F0);
-  static const _slate400   = Color(0xFF94A3B8);
   static const _slate600   = Color(0xFF475569);
-  static const _slate700   = Color(0xFF334155);
   static const _slate900   = Color(0xFF0F172A);
   static const _emerald    = Color(0xFF059669);
   static const _emeraldLight = Color(0xFFD1FAE5);
@@ -260,8 +243,6 @@ class _YearlyTrendTabState extends State<_YearlyTrendTab> {
       );
     }
 
-    final maxCount =
-        provider.yearlyTrend.map((e) => e.count).fold(0, max);
     final peakEntry = provider.yearlyTrend
         .reduce((a, b) => a.count > b.count ? a : b);
     final total =
@@ -398,7 +379,7 @@ class _YearlyTrendTabState extends State<_YearlyTrendTab> {
                 const SizedBox(height: 20),
                 SizedBox(
                   height: 220,
-                  child: _BarChart(
+                  child: _LineChart(
                     data: currentPageData,
                     maxCount: localMaxCount.toInt(),
                     peakYear: peakEntry.year,
@@ -477,7 +458,7 @@ class _YearlyTrendTabState extends State<_YearlyTrendTab> {
   }
 }
 
-class _BarChart extends StatelessWidget {
+class _LineChart extends StatelessWidget {
   final List<dynamic> data;
   final int maxCount;
   final int peakYear;
@@ -488,8 +469,10 @@ class _BarChart extends StatelessWidget {
   static const _amber      = Color(0xFFD97706);
   static const _slate200   = Color(0xFFE2E8F0);
   static const _slate400   = Color(0xFF94A3B8);
+  static const _slate600   = Color(0xFF475569);
+  static const _slate900   = Color(0xFF0F172A);
 
-  const _BarChart({
+  const _LineChart({
     required this.data,
     required this.maxCount,
     required this.peakYear,
@@ -499,99 +482,217 @@ class _BarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        const topLabelSlot = 14.0;
-        const bottomLabelSlot = 20.0;
-        const verticalGaps = 8.0; // 2px above bar + 6px below bar
-        final maxBarHeight = constraints.maxHeight -
-            topLabelSlot -
-            bottomLabelSlot -
-            verticalGaps;
+        final double width = constraints.maxWidth;
+        final double height = constraints.maxHeight;
 
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: List.generate(data.length, (index) {
-            final entry = data[index];
-            final isPeak = entry.year == peakYear;
-            final ratio = maxCount > 0 ? (entry.count / maxCount) : 0.0;
-            final barH = max(ratio * maxBarHeight, 6.0);
+        final double paddingX = 16.0;
+        final double paddingY = 24.0;
+        final double w = width - 2 * paddingX;
+        final double h = height - 2 * paddingY;
 
-            return Flexible(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                child: SizedBox(
-                  width: 36,
-                  height: constraints.maxHeight,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                    SizedBox(
-                      height: topLabelSlot,
-                      child: Center(
-                        child: isPeak
-                            ? FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  '${entry.count}',
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: _amber,
-                                  ),
-                                ),
-                              )
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Tooltip(
-                      triggerMode: TooltipTriggerMode.tap,
-                      message: '${entry.year}: ${entry.count} papers',
-                      child: Container(
-                        width: 36,
-                        height: barH,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isPeak
-                                ? [_amber, const Color(0xFFF59E0B)]
-                                : [_indigo.withOpacity(0.6), _indigo],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(4),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    SizedBox(
-                      height: bottomLabelSlot,
-                      child: Center(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            '${entry.year}',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: isPeak ? _amber : _slate400,
-                              fontWeight: isPeak
-                                  ? FontWeight.w700
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+        final double stepX = data.length > 1 ? w / (data.length - 1) : w;
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _LineChartPainter(
+                  data: data,
+                  maxCount: maxCount,
+                  peakYear: peakYear,
+                  lineColor: _indigo,
+                  fillColor: _indigo,
                 ),
               ),
             ),
-          );
-          }),
+
+            for (int i = 0; i < data.length; i++) ...[
+              if (data[i].year == peakYear)
+                Positioned(
+                  left: paddingX + i * stepX - 30,
+                  top: paddingY + h * (1.0 - (data[i].count / (maxCount > 0 ? maxCount : 1))) - 22,
+                  child: Container(
+                    width: 60,
+                    alignment: Alignment.center,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: _amber.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        '${data[i].count}',
+                        style: const TextStyle(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w800,
+                          color: _amber,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+
+            for (int i = 0; i < data.length; i++)
+              Positioned(
+                left: paddingX + i * stepX - 18,
+                top: paddingY,
+                width: 36,
+                height: h,
+                child: Tooltip(
+                  triggerMode: TooltipTriggerMode.tap,
+                  message: '${data[i].year}: ${data[i].count} papers',
+                  child: Container(
+                    color: Colors.transparent,
+                  ),
+                ),
+              ),
+
+            for (int i = 0; i < data.length; i++)
+              Positioned(
+                left: paddingX + i * stepX - 20,
+                bottom: 2,
+                width: 40,
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${data[i].year}',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: data[i].year == peakYear ? FontWeight.bold : FontWeight.normal,
+                        color: data[i].year == peakYear ? _amber : _slate400,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
+  }
+}
+
+class _LineChartPainter extends CustomPainter {
+  final List<dynamic> data;
+  final int maxCount;
+  final int peakYear;
+  final Color lineColor;
+  final Color fillColor;
+
+  _LineChartPainter({
+    required this.data,
+    required this.maxCount,
+    required this.peakYear,
+    required this.lineColor,
+    required this.fillColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty) return;
+
+    final double paddingX = 16.0;
+    final double paddingY = 24.0;
+    final double w = size.width - 2 * paddingX;
+    final double h = size.height - 2 * paddingY;
+
+    final double stepX = data.length > 1 ? w / (data.length - 1) : w;
+
+    final gridPaint = Paint()
+      ..color = const Color(0xFFE2E8F0)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    for (int i = 0; i <= 4; i++) {
+      final double y = paddingY + h * (i / 4.0);
+      canvas.drawLine(Offset(paddingX, y), Offset(paddingX + w, y), gridPaint);
+    }
+
+    final List<Offset> points = [];
+    for (int i = 0; i < data.length; i++) {
+      final entry = data[i];
+      final ratio = maxCount > 0 ? entry.count / maxCount : 0.0;
+      final double x = paddingX + i * stepX;
+      final double y = paddingY + h * (1.0 - ratio);
+      points.add(Offset(x, y));
+    }
+
+    if (points.length > 1) {
+      final pathFill = Path();
+      pathFill.moveTo(points.first.dx, paddingY + h);
+      for (final pt in points) {
+        pathFill.lineTo(pt.dx, pt.dy);
+      }
+      pathFill.lineTo(points.last.dx, paddingY + h);
+      pathFill.close();
+
+      final fillPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            fillColor.withOpacity(0.4),
+            fillColor.withOpacity(0.0),
+          ],
+        ).createShader(Rect.fromLTRB(paddingX, paddingY, paddingX + w, paddingY + h))
+        ..style = PaintingStyle.fill;
+
+      canvas.drawPath(pathFill, fillPaint);
+    }
+
+    final linePaint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    if (points.length > 1) {
+      final pathLine = Path();
+      pathLine.moveTo(points.first.dx, points.first.dy);
+      for (int i = 1; i < points.length; i++) {
+        pathLine.lineTo(points[i].dx, points[i].dy);
+      }
+      canvas.drawPath(pathLine, linePaint);
+    }
+
+    final dotPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final dotBorderPaint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    for (int i = 0; i < points.length; i++) {
+      final entry = data[i];
+      final pt = points[i];
+      final isPeak = entry.year == peakYear;
+
+      if (isPeak) {
+        final peakPaint = Paint()
+          ..color = const Color(0xFFD97706)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(pt, 6.0, peakPaint);
+        canvas.drawCircle(pt, 6.0, dotPaint..color = Colors.white);
+        canvas.drawCircle(pt, 6.0, dotPaint..color = const Color(0xFFD97706).withOpacity(0.2));
+      } else {
+        canvas.drawCircle(pt, 4.0, dotPaint..color = Colors.white);
+        canvas.drawCircle(pt, 4.0, dotBorderPaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LineChartPainter oldDelegate) {
+    return oldDelegate.data != data ||
+        oldDelegate.maxCount != maxCount ||
+        oldDelegate.peakYear != peakYear;
   }
 }
 
@@ -858,6 +959,8 @@ class _TopAuthorsTab extends StatelessWidget {
 
   static const _violet      = Color(0xFF7C3AED);
   static const _violetLight = Color(0xFFF5F3FF);
+  static const _slate900    = Color(0xFF0F172A);
+  static const _slate200    = Color(0xFFE2E8F0);
 
   const _TopAuthorsTab({required this.provider});
 
@@ -872,30 +975,292 @@ class _TopAuthorsTab extends StatelessWidget {
 
     final maxCount =
         provider.topAuthors.map((e) => e.paperCount).fold(0, max);
+    final topAuthor = provider.topAuthors.first;
 
-    return _RankedBarList(
-      items: provider.topAuthors
-          .map((a) => _RankItem(
-                id: a.authorId,
-                name: a.displayName,
-                count: a.paperCount,
-                subtitle: '${a.paperCount} papers',
-              ))
-          .toList(),
-      maxCount: maxCount,
-      color: _violet,
-      bgColor: _violetLight,
-      icon: Icons.person_rounded,
-      onItemTap: (item) {
-        if (item.id == null) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AuthorDetailScreen(
-              authorId: item.id!,
-              authorName: item.name,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Stat cards ─────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  label: 'Total Authors',
+                  value: '${provider.topAuthors.length}',
+                  icon: Icons.people_outline_rounded,
+                  color: _violet,
+                  bgColor: _violetLight,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StatCard(
+                  label: 'Top Author',
+                  value: topAuthor.displayName,
+                  icon: Icons.emoji_events_rounded,
+                  color: const Color(0xFFD97706), // amber
+                  bgColor: const Color(0xFFFEF3C7), // amberLight
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StatCard(
+                  label: 'Max Papers',
+                  value: '${topAuthor.paperCount}',
+                  icon: Icons.menu_book_rounded,
+                  color: const Color(0xFF059669), // emerald
+                  bgColor: const Color(0xFFD1FAE5), // emeraldLight
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Chart section ───────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _slate200),
+              boxShadow: [
+                BoxShadow(
+                  color: _slate900.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Author Publication Volume',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: _slate900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Top authors ranked by publication count.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                ),
+                const SizedBox(height: 24),
+                _HorizontalBarChart(
+                  data: provider.topAuthors,
+                  maxCount: maxCount,
+                  color: _violet,
+                  bgColor: _violetLight,
+                  onItemTap: (item) {
+                    if (item.authorId == null) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AuthorDetailScreen(
+                          authorId: item.authorId!,
+                          authorName: item.displayName,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HorizontalBarChart extends StatelessWidget {
+  final List<dynamic> data; // List of AuthorStat
+  final int maxCount;
+  final Color color;
+  final Color bgColor;
+  final void Function(dynamic item) onItemTap;
+
+  const _HorizontalBarChart({
+    required this.data,
+    required this.maxCount,
+    required this.color,
+    required this.bgColor,
+    required this.onItemTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: [
+            // Background Grid Lines (at 0%, 25%, 50%, 75%, 100%)
+            Positioned.fill(
+              bottom: 24, // leave space for bottom scale axis
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(5, (index) {
+                  return Container(
+                    width: 1,
+                    color: const Color(0xFFE2E8F0).withOpacity(0.6),
+                  );
+                }),
+              ),
+            ),
+            
+            // Chart Content (Bars, labels, and bottom scale)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...List.generate(data.length, (index) {
+                  final item = data[index];
+                  final ratio = maxCount > 0 ? item.paperCount / maxCount : 0.0;
+                  final isMedal = index < 3;
+                  
+                  final medalColors = [
+                    const Color(0xFFD97706), // gold
+                    const Color(0xFF94A3B8), // silver
+                    const Color(0xFFB45309), // bronze
+                  ];
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: InkWell(
+                      onTap: () => onItemTap(item),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 6.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Author name & paper count
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    // Rank Badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: isMedal 
+                                            ? medalColors[index].withOpacity(0.12)
+                                            : const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '#${index + 1}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: isMedal ? medalColors[index] : const Color(0xFF475569),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      item.displayName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '${item.paperCount} ${item.paperCount == 1 ? 'paper' : 'papers'}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            
+                            // Horizontal Bar representation
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Stack(
+                                    children: [
+                                      // Track background
+                                      Container(
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: bgColor.withOpacity(0.5),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                      ),
+                                      // Filled portion
+                                      FractionallySizedBox(
+                                        widthFactor: ratio,
+                                        child: Container(
+                                          height: 12,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                color.withOpacity(0.7),
+                                                color,
+                                              ],
+                                              begin: Alignment.centerLeft,
+                                              end: Alignment.centerRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(6),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: color.withOpacity(0.2),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 1),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                
+                const SizedBox(height: 8),
+                // X-Axis Baseline
+                Container(
+                  height: 1,
+                  color: const Color(0xFFE2E8F0),
+                ),
+                const SizedBox(height: 4),
+                // X-Axis Tick Labels
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(5, (index) {
+                    final val = (maxCount * index / 4).round();
+                    return Text(
+                      '$val',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF94A3B8),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ],
         );
       },
     );
@@ -911,6 +1276,9 @@ class _CountriesTab extends StatelessWidget {
 
   static const _emerald = Color(0xFF059669);
   static const _emeraldLight = Color(0xFFD1FAE5);
+  static const _slate900 = Color(0xFF0F172A);
+  static const _slate600 = Color(0xFF475569);
+  static const _slate200 = Color(0xFFE2E8F0);
 
   const _CountriesTab({required this.provider});
 
@@ -926,18 +1294,434 @@ class _CountriesTab extends StatelessWidget {
     final maxCount =
         provider.countryBreakdown.map((e) => e.paperCount).fold(0, max);
 
-    return _RankedBarList(
-      items: provider.countryBreakdown
-          .map((c) => _RankItem(
-                name: c.displayName,
-                count: c.paperCount,
-                subtitle: '${c.paperCount} papers',
-              ))
-          .toList(),
-      maxCount: maxCount,
-      color: _emerald,
-      bgColor: _emeraldLight,
-      icon: Icons.flag_rounded,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Heatmap Matrix Section ──────────────────────────────
+          _CountryTopicHeatmapCard(provider: provider),
+          const SizedBox(height: 24),
+
+          // ── Country Rankings Title ──────────────────────────────
+          const Text(
+            'Country Rankings',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: _slate900,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // ── Country Rankings List (Flat layout) ─────────────────
+          ...List.generate(provider.countryBreakdown.length, (index) {
+            final c = provider.countryBreakdown[index];
+            final ratio = maxCount > 0 ? c.paperCount / maxCount : 0.0;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _slate200),
+                boxShadow: [
+                  BoxShadow(
+                    color: _slate900.withOpacity(0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Rank number
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: index == 0 ? _emerald : _emeraldLight,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: index == 0 ? Colors.white : _emerald,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Name + bar
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          c.displayName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: _slate900,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        // Progress bar
+                        Stack(
+                          children: [
+                            Container(
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: _emeraldLight,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            FractionallySizedBox(
+                              widthFactor: ratio,
+                              child: Container(
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: _emerald,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  // Count chip
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _emeraldLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${c.paperCount} papers',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _emerald,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _CountryTopicHeatmapCard extends StatelessWidget {
+  final SearchProvider provider;
+
+  const _CountryTopicHeatmapCard({required this.provider});
+
+  static const _emerald = Color(0xFF059669);
+  static const _emeraldLight = Color(0xFFD1FAE5);
+  static const _slate50 = Color(0xFFF8FAFC);
+  static const _slate100 = Color(0xFFF1F5F9);
+  static const _slate200 = Color(0xFFE2E8F0);
+  static const _slate400 = Color(0xFF94A3B8);
+  static const _slate600 = Color(0xFF475569);
+  static const _slate900 = Color(0xFF0F172A);
+
+  @override
+  Widget build(BuildContext context) {
+    if (provider.countryMatrixState == LoadState.loading) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _slate200),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: _emerald),
+        ),
+      );
+    }
+
+    if (provider.countryMatrixState == LoadState.error) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _slate200),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.red, size: 36),
+            const SizedBox(height: 12),
+            Text(
+              'Could not load Country-Topic matrix: ${provider.errorMessage ?? "Unknown error"}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _slate600, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final matrix = provider.countryMatrix;
+    if (matrix.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Find the maximum value in the matrix for color scaling
+    int maxVal = 0;
+    for (final code in matrix.countryCodes) {
+      for (final topic in matrix.topics) {
+        final val = matrix.data[code]?[topic] ?? 0;
+        if (val > maxVal) maxVal = val;
+      }
+    }
+    if (maxVal == 0) maxVal = 1;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _slate200),
+        boxShadow: [
+          BoxShadow(
+            color: _slate900.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _emeraldLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.grid_on_rounded, color: _emerald, size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Country-Topic Matrix',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: _slate900,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Searched topics by country (heatmap)',
+                      style: TextStyle(fontSize: 11, color: _slate600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Scrollable Matrix Grid
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Table(
+              defaultColumnWidth: const FixedColumnWidth(55),
+              columnWidths: {
+                0: const FixedColumnWidth(115),
+                for (int i = 1; i <= matrix.countryCodes.length; i++)
+                  i: const FixedColumnWidth(48),
+              },
+              border: TableBorder.all(
+                color: _slate100,
+                width: 1,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              children: [
+                // Header row
+                TableRow(
+                  decoration: const BoxDecoration(
+                    color: _slate50,
+                  ),
+                  children: [
+                    // Topic Header
+                    const TableCell(
+                      verticalAlignment: TableCellVerticalAlignment.middle,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        child: Text(
+                          'Searched Topic',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: _slate600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Country Headers
+                    ...matrix.countryCodes.map(
+                      (code) => TableCell(
+                        verticalAlignment: TableCellVerticalAlignment.middle,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _emeraldLight.withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                code,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: _emerald,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Data rows
+                ...matrix.topics.map((topic) {
+                  return TableRow(
+                    children: [
+                      // Topic Name Cell
+                      TableCell(
+                        verticalAlignment: TableCellVerticalAlignment.middle,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          child: Text(
+                            topic,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: _slate900,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      // Heatmap Data Cells
+                      ...matrix.countryCodes.map((code) {
+                        final val = matrix.data[code]?[topic] ?? 0;
+                        final ratio = val / maxVal;
+                        final cellBgColor = val == 0
+                            ? _slate50
+                            : Color.lerp(_emeraldLight.withOpacity(0.3), _emerald, ratio)!;
+                        final cellTextColor = val == 0
+                            ? _slate400
+                            : (ratio > 0.5 ? Colors.white : _slate900);
+
+                        return TableCell(
+                          verticalAlignment: TableCellVerticalAlignment.middle,
+                          child: Padding(
+                            padding: const EdgeInsets.all(2),
+                            child: Tooltip(
+                              message: '$val papers in $topic (${matrix.countries[matrix.countryCodes.indexOf(code)]})',
+                              preferBelow: false,
+                              child: Container(
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: cellBgColor,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  val == 0 ? '-' : '$val',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: cellTextColor,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Legend
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Fewer papers',
+                style: TextStyle(fontSize: 9.5, color: _slate600, fontWeight: FontWeight.w500),
+              ),
+              Container(
+                width: 120,
+                height: 8,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  gradient: const LinearGradient(
+                    colors: [_slate50, _emeraldLight, _emerald],
+                  ),
+                ),
+              ),
+              const Text(
+                'More papers',
+                style: TextStyle(fontSize: 9.5, color: _slate600, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: _slate100),
+          const SizedBox(height: 10),
+
+          // Country Codes Index Legend
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: List.generate(matrix.countryCodes.length, (idx) {
+              return Text(
+                '${matrix.countryCodes[idx]}: ${matrix.countries[idx]}',
+                style: const TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w600,
+                  color: _slate600,
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1151,12 +1935,16 @@ class _StatCard extends StatelessWidget {
             child: Icon(icon, color: color, size: 14),
           ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: color,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
             ),
           ),
           Text(

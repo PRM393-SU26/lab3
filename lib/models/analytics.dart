@@ -49,3 +49,31 @@ class TopicDashboard {
     this.mostInfluentialCitations,
   });
 }
+
+/// Matrix containing paper count by Country and Topic (Field)
+class CountryTopicMatrix {
+  final List<String> countries; // Display names of countries, e.g. ["United States", "China"]
+  final List<String> countryCodes; // Codes of countries, e.g. ["US", "CN"]
+  final List<String> topics; // Display names of topics, e.g. ["Computer Science", "Physics"]
+  final Map<String, Map<String, int>> data; // Map of countryCode -> {topicName: paperCount}
+
+  CountryTopicMatrix({
+    required this.countries,
+    required this.countryCodes,
+    required this.topics,
+    required this.data,
+  });
+
+  factory CountryTopicMatrix.empty() {
+    return CountryTopicMatrix(
+      countries: [],
+      countryCodes: [],
+      topics: [],
+      data: {},
+    );
+  }
+
+  bool get isEmpty => countries.isEmpty;
+  bool get isNotEmpty => countries.isNotEmpty;
+}
+

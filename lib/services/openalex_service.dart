@@ -250,14 +250,76 @@ class OpenAlexService {
         .where((g) =>
             g['key_display_name'] != null &&
             g['key_display_name'].toString().isNotEmpty)
-        .map((g) => CountryStat(
-              countryCode: g['key']?.toString() ?? '',
-              displayName: g['key_display_name'].toString(),
-              paperCount: _asInt(g['count']),
-            ))
+        .map((g) {
+          final rawKey = g['key']?.toString() ?? '';
+          final code = rawKey.replaceFirst('https://openalex.org/countries/', '');
+          return CountryStat(
+            countryCode: code,
+            displayName: g['key_display_name'].toString(),
+            paperCount: _asInt(g['count']),
+          );
+        })
         .take(limit)
         .toList();
   }
+
+  // ─────────────────────────────────────────────
+  // NEW: COUNTRY-TOPIC MATRIX FOR HEATMAP
+  // ─────────────────────────────────────────────
+
+  /// Returns a Country-Topic matrix for the top 5 countries in the breakdown.
+  /// Returns a Country-Topic matrix for a list of topics and top countries.
+  Future<CountryTopicMatrix> getCountryTopicMatrix(
+    List<String> topics,
+    List<CountryStat> topCountries,
+  ) async {
+    final selectedCountries = topCountries.take(5).toList();
+    if (selectedCountries.isEmpty || topics.isEmpty) {
+      return CountryTopicMatrix.empty();
+    }
+
+    final countryCodes = selectedCountries.map((c) => c.countryCode).toList();
+    final countryNames = selectedCountries.map((c) => c.displayName).toList();
+
+    final Map<String, Map<String, int>> matrix = {};
+
+    // Run parallel API requests for each topic to get its country breakdown
+    final results = await Future.wait(
+      topics.map((topic) => _get('/works', {
+        'search': topic,
+        'group_by': 'authorships.institutions.country_code',
+        'per_page': '10',
+      })),
+    );
+
+    for (int i = 0; i < topics.length; i++) {
+      final topic = topics[i];
+      final responseData = results[i];
+      final groups = responseData['group_by'] as List? ?? [];
+      
+      for (final g in groups) {
+        final rawKey = g['key']?.toString() ?? '';
+        final countryCode = rawKey.replaceFirst('https://openalex.org/countries/', '');
+        final count = _asInt(g['count']);
+        
+        if (countryCodes.contains(countryCode)) {
+          if (!matrix.containsKey(countryCode)) {
+            matrix[countryCode] = {};
+          }
+          matrix[countryCode]![topic] = count;
+        }
+      }
+    }
+
+    return CountryTopicMatrix(
+      countries: countryNames,
+      countryCodes: countryCodes,
+      topics: topics,
+      data: matrix,
+    );
+  }
+
+
 
   // ─────────────────────────────────────────────
   // NEW: OA STATUS BREAKDOWN
