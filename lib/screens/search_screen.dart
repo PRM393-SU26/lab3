@@ -16,15 +16,20 @@ class SearchScreen extends StatefulWidget {
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
+class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _searchFocusNode = FocusNode();
+  late TabController _tabController;
 
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 7, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
     _scrollController.addListener(_onScroll);
     _searchFocusNode.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -37,6 +42,7 @@ class _SearchScreenState extends State<SearchScreen> {
     _searchController.dispose();
     _scrollController.dispose();
     _searchFocusNode.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -70,39 +76,39 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     }
 
-    return DefaultTabController(
-      length: 7,
-      child: Scaffold(
-        appBar: AppBar(
-          leading: provider.currentTopic.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  tooltip: 'Back to Main',
-                  onPressed: () {
-                    _searchController.clear();
-                    context.read<SearchProvider>().resetSearch();
-                  },
-                )
-              : null,
-          title: const Text('Journal Trend Analyzer'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.bookmarks_outlined),
-              tooltip: 'Reading List',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ReadingListScreen()),
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        leading: provider.currentTopic.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back to Main',
+                onPressed: () {
+                  _searchController.clear();
+                  context.read<SearchProvider>().resetSearch();
+                  _tabController.index = 0;
+                },
+              )
+            : null,
+        title: const Text('Journal Trend Analyzer'),
+        actions: [
+          if (provider.currentTopic.isNotEmpty)
+            _buildNavigationDropdown(theme),
+          IconButton(
+            icon: const Icon(Icons.bookmarks_outlined),
+            tooltip: 'Reading List',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ReadingListScreen()),
             ),
-            if (provider.currentTopic.isEmpty)
-              IconButton(
-                icon: const Icon(Icons.settings_outlined),
-                tooltip: 'Settings',
-                onPressed: () => _showSettingsModal(context),
-              ),
-
-          ],
-        ),
+          ),
+          if (provider.currentTopic.isEmpty)
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Settings',
+              onPressed: () => _showSettingsModal(context),
+            ),
+        ],
+      ),
         body: Column(
           children: [
             // Search & Filter Panel
@@ -252,6 +258,7 @@ class _SearchScreenState extends State<SearchScreen> {
           // Results Area
           Expanded(
             child: TabBarView(
+              controller: _tabController,
               children: [
                 Column(
                   children: [
@@ -275,29 +282,76 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: Material(
-        elevation: 8,
-        color: theme.colorScheme.surface,
-        child: SafeArea(
-          child: TabBar(
-            isScrollable: true,
-            indicatorColor: theme.colorScheme.primary,
-            labelColor: theme.colorScheme.primary,
-            unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-            tabAlignment: TabAlignment.start,
-            tabs: const [
-              Tab(icon: Icon(Icons.article), text: 'Paper'),
-              Tab(icon: Icon(Icons.show_chart), text: 'Yearly Trend'),
-              Tab(icon: Icon(Icons.dashboard), text: 'Dashboard'),
-              Tab(icon: Icon(Icons.workspace_premium), text: 'Top Papers'),
-              Tab(icon: Icon(Icons.menu_book), text: 'Journals'),
-              Tab(icon: Icon(Icons.people), text: 'Authors'),
-              Tab(icon: Icon(Icons.public), text: 'Countries'),
-            ],
-          ),
+    );
+  }
+
+  Widget _buildNavigationDropdown(ThemeData theme) {
+    final List<Map<String, dynamic>> items = [
+      {'title': 'Paper', 'icon': Icons.article},
+      {'title': 'Yearly Trend', 'icon': Icons.show_chart},
+      {'title': 'Dashboard', 'icon': Icons.dashboard},
+      {'title': 'Top Papers', 'icon': Icons.workspace_premium},
+      {'title': 'Journals', 'icon': Icons.menu_book},
+      {'title': 'Authors', 'icon': Icons.people},
+      {'title': 'Countries', 'icon': Icons.public},
+    ];
+
+    final currentItem = items[_tabController.index];
+
+    return PopupMenuButton<int>(
+      initialValue: _tabController.index,
+      color: theme.colorScheme.surface,
+      tooltip: 'Navigate',
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              currentItem['icon'] as IconData,
+              color: Colors.white,
+            ),
+            const Icon(
+              Icons.arrow_drop_down,
+              color: Colors.white,
+            ),
+          ],
         ),
       ),
-      ),
+      onSelected: (int newIndex) {
+        setState(() {
+          _tabController.index = newIndex;
+        });
+      },
+      itemBuilder: (BuildContext context) {
+        return items.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final item = entry.value;
+          return PopupMenuItem<int>(
+            value: idx,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  item['icon'] as IconData,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  item['title'] as String,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList();
+      },
     );
   }
 
