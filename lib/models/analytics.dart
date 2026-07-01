@@ -85,3 +85,17 @@ class CountryTopicMatrix {
   bool get isNotEmpty => countries.isNotEmpty;
 }
 
+/// One entry in the Top Keywords/Concepts list
+class KeywordStat {
+  final String? conceptId;
+  final String displayName;
+  final int paperCount;
+
+  KeywordStat({
+    this.conceptId,
+    required this.displayName,
+    required this.paperCount,
+  });
+}
+
+

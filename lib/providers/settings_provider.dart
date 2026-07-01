@@ -9,10 +9,14 @@ class SettingsProvider extends ChangeNotifier {
   Color _seedColor = const Color(0xFF1D9E75);
   bool _showSuggestedTopics = true;
   bool _showTopAuthors = true;
+  String _openAlexEmail = 'thait5236@gmail.com';
+  String _openAlexApiKey = 'iocC3AFV7r7cHq23vnmmNH';
 
   Color get seedColor => _seedColor;
   bool get showSuggestedTopics => _showSuggestedTopics;
   bool get showTopAuthors => _showTopAuthors;
+  String get openAlexEmail => _openAlexEmail;
+  String get openAlexApiKey => _openAlexApiKey;
 
   Color get appBarColor {
     final hsl = HSLColor.fromColor(_seedColor);

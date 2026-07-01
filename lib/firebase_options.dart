@@ -41,48 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDinVMcxUmpUOZwQp9qlHrTT91_xyUySoA',
-    appId: '1:849075968130:web:cb69dea0cf038c055fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    authDomain: 'prm-lab-a2526.firebaseapp.com',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
-    measurementId: 'G-2RS1TQ97MD',
+    apiKey: 'AIzaSyDOG5jufsJ-MPnxQbvPWN0jG6IBVWEjWns',
+    appId: '1:865302042692:web:14f2a09827779c89380411',
+    messagingSenderId: '865302042692',
+    projectId: 'journal-trend-86de9',
+    authDomain: 'journal-trend-86de9.firebaseapp.com',
+    storageBucket: 'journal-trend-86de9.firebasestorage.app',
+    measurementId: 'G-950T46YFGS',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAaHneR2Lo8kpKwt1TBsKK_ENJnv3zTurg',
-    appId: '1:849075968130:android:c7947f4432602cb05fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
+    apiKey: 'AIzaSyDhKP8MsXlVlMP_RiatXiDi-ham15nm7s4',
+    appId: '1:865302042692:android:7dc44d69c05c7733380411',
+    messagingSenderId: '865302042692',
+    projectId: 'journal-trend-86de9',
+    storageBucket: 'journal-trend-86de9.firebasestorage.app',
   );
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCpKnTH-TYQK36jedKXyDNUIDznO0_vcCY',
-    appId: '1:849075968130:ios:232493f67917df185fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
-    iosClientId: '849075968130-s0o4q1vogtmceuq4ndom43mln9enji31.apps.googleusercontent.com',
+    apiKey: 'AIzaSyCOQBIR7Aa3qyLWcRTU0mMXhk9fbfOs9fE',
+    appId: '1:865302042692:ios:57fc2dfc632ccf12380411',
+    messagingSenderId: '865302042692',
+    projectId: 'journal-trend-86de9',
+    storageBucket: 'journal-trend-86de9.firebasestorage.app',
     iosBundleId: 'com.example.journalTrend',
   );
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCpKnTH-TYQK36jedKXyDNUIDznO0_vcCY',
-    appId: '1:849075968130:ios:232493f67917df185fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
-    iosClientId: '849075968130-s0o4q1vogtmceuq4ndom43mln9enji31.apps.googleusercontent.com',
+    apiKey: 'AIzaSyCOQBIR7Aa3qyLWcRTU0mMXhk9fbfOs9fE',
+    appId: '1:865302042692:ios:57fc2dfc632ccf12380411',
+    messagingSenderId: '865302042692',
+    projectId: 'journal-trend-86de9',
+    storageBucket: 'journal-trend-86de9.firebasestorage.app',
     iosBundleId: 'com.example.journalTrend',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDinVMcxUmpUOZwQp9qlHrTT91_xyUySoA',
-    appId: '1:849075968130:web:791054ea4a4eb1905fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    authDomain: 'prm-lab-a2526.firebaseapp.com',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
-    measurementId: 'G-9M7D3X41E7',
+    apiKey: 'AIzaSyDOG5jufsJ-MPnxQbvPWN0jG6IBVWEjWns',
+    appId: '1:865302042692:web:2f36e4e0036f986b380411',
+    messagingSenderId: '865302042692',
+    projectId: 'journal-trend-86de9',
+    authDomain: 'journal-trend-86de9.firebaseapp.com',
+    storageBucket: 'journal-trend-86de9.firebasestorage.app',
+    measurementId: 'G-6E0SN48EEQ',
   );
 }

@@ -1,19 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'providers/reading_list_provider.dart';
-import 'providers/settings_provider.dart';
-import 'screens/main_screen.dart';
-import 'screens/search_screen.dart';
-import 'services/search_provider.dart';
+import 'package:journal_trend/providers/reading_list_provider.dart';
+import 'package:journal_trend/providers/settings_provider.dart';
+import 'package:journal_trend/screens/main_screen.dart';
+import 'package:journal_trend/screens/search_screen.dart';
+import 'package:journal_trend/screens/login_screen.dart';
+import 'package:journal_trend/services/search_provider.dart';
+import 'package:journal_trend/services/fcm_service.dart';
+import 'package:journal_trend/services/remote_config_service.dart';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:journal_trend/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  
+  // Initialize Google Sign In exactly once at startup
+  try {
+    await GoogleSignIn.instance.initialize(
+      serverClientId: '865302042692-57tmuguuht7o3q5ohir6ge0boa5tm5jn.apps.googleusercontent.com',
+    );
+  } catch (e) {
+    debugPrint("Google Sign In init failed: $e");
+  }
+
+  // Initialize Lab3 Firebase backend configurations
+  await RemoteConfigService.initialize();
+  await FcmService.initialize();
 
   runApp(
     MultiProvider(
@@ -61,7 +79,28 @@ class _JournalTrendAppState extends State<JournalTrendApp> {
           elevation: 0,
         ),
       ),
-      home: const MainScreen(),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+          final user = snapshot.data;
+          return Consumer<SearchProvider>(
+            builder: (context, provider, child) {
+              if (user != null || provider.isDeveloperMode) {
+                return const MainScreen();
+              }
+              return const LoginScreen();
+            },
+          );
+        },
+      ),
     );
   }
 }
+
