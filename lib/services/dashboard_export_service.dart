@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
@@ -8,6 +9,23 @@ import '../models/analytics.dart';
 import '../models/author_detail.dart';
 
 class DashboardExportService {
+  /// Upload a generated PDF report to Firebase Storage and return download URL.
+  static Future<String> uploadReportToFirebase(Uint8List pdfBytes, String topic) async {
+    final storageRef = FirebaseStorage.instance.ref();
+    final cleanTopic = topic.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').toLowerCase();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final reportRef = storageRef.child('reports/report_${cleanTopic}_$timestamp.pdf');
+
+    final uploadTask = reportRef.putData(
+      pdfBytes,
+      SettableMetadata(contentType: 'application/pdf'),
+    );
+
+    final snapshot = await uploadTask;
+    final downloadUrl = await snapshot.ref.getDownloadURL();
+    return downloadUrl;
+  }
+
   static Future<Uint8List> generatePdf(
     TopicDashboard db,
     List<OaStat> oaBreakdown,

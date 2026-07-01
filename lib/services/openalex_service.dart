@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/work.dart';
 import '../models/analytics.dart';
@@ -30,10 +31,10 @@ class OpenAlexService {
 
   /// Set your free API key from https://openalex.org/settings/api
   /// Leave empty to use the polite pool (slower, lower rate limit).
-  static const String _apiKey = '';
+  static const String _apiKey = 'iocC3AFV7r7cHq23vnmmNH';
 
   /// Your app contact email for the polite pool.
-  static const String _email = 'your-email@example.com';
+  static const String _email = 'thait5236@gmail.com';
 
   static const Duration _requestTimeout = Duration(seconds: 45);
   static const int _maxAttempts = 3;
@@ -51,7 +52,13 @@ class OpenAlexService {
     if (_apiKey.isNotEmpty) {
       params['api_key'] = _apiKey;
     } else {
-      params['mailto'] = _email;
+      final currentUserEmail = FirebaseAuth.instance.currentUser?.email;
+      if (currentUserEmail != null && currentUserEmail.isNotEmpty) {
+        params['mailto'] = currentUserEmail;
+      } else {
+        // Fallback to a cleaner default email to avoid polite pool blocks/rate limits
+        params['mailto'] = _email;
+      }
     }
     return params;
   }
@@ -72,6 +79,7 @@ class OpenAlexService {
     Map<String, String> queryParams,
   ) async {
     final uri = _buildUri(path, queryParams);
+    final email = _defaultParams['mailto'] ?? _email;
 
     for (var attempt = 1; attempt <= _maxAttempts; attempt++) {
       if (attempt > 1) {
@@ -79,7 +87,12 @@ class OpenAlexService {
       }
 
       try {
-        final response = await _client.get(uri).timeout(_requestTimeout);
+        final response = await _client.get(
+          uri,
+          headers: {
+            'User-Agent': 'JournalTrendAnalyzer/1.0 (mailto:$email)',
+          },
+        ).timeout(_requestTimeout);
 
         if (response.statusCode == 200) {
           return jsonDecode(response.body) as Map<String, dynamic>;
@@ -555,6 +568,125 @@ class OpenAlexService {
         .map((e) => Work.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  // ─────────────────────────────────────────────
+  // LAB3: JOURNAL & KEYWORD EXTENSIONS
+  // ─────────────────────────────────────────────
+
+  /// Fetch related publications inside a specific journal/source.
+  Future<List<Work>> getWorksInJournal(String journalId, {int limit = 5}) async {
+    final id = journalId.replaceFirst('https://openalex.org/', '');
+    final data = await _get('/works', {
+      'filter': 'primary_location.source.id:$id',
+      'sort': 'cited_by_count:desc',
+      'per_page': limit.toString(),
+      'select': 'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
+    });
+    return (data['results'] as List? ?? [])
+        .map((e) => Work.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Fetch top keywords (concepts) associated with a topic.
+  Future<List<KeywordStat>> getTopKeywords(String topic, {int limit = 10}) async {
+    final data = await _get('/works', {
+      'search': topic,
+      'group_by': 'concepts.id',
+      'per_page': limit.toString(),
+    });
+    final groups = data['group_by'] as List? ?? [];
+    return groups
+        .where((g) => g['key_display_name'] != null && g['key_display_name'].toString().isNotEmpty)
+        .map((g) {
+          final rawKey = g['key']?.toString() ?? '';
+          final conceptId = rawKey.replaceFirst('https://openalex.org/', '');
+          return KeywordStat(
+            conceptId: conceptId,
+            displayName: g['key_display_name'].toString(),
+            paperCount: _asInt(g['count']),
+          );
+        })
+        .take(limit)
+        .toList();
+  }
+
+  /// Fetch publication trend over time for a keyword/concept.
+  Future<List<YearlyCount>> getKeywordTrend(String conceptId) async {
+    final id = conceptId.replaceFirst('https://openalex.org/', '');
+    final data = await _get('/works', {
+      'filter': 'concepts.id:$id',
+      'group_by': 'publication_year',
+      'per_page': '200',
+    });
+    final groups = data['group_by'] as List? ?? [];
+    final counts = groups
+        .where((g) {
+          final year = int.tryParse(g['key']?.toString() ?? '');
+          return year != null && year <= DateTime.now().year;
+        })
+        .map((g) => YearlyCount(
+              year: int.parse(g['key'].toString()),
+              count: _asInt(g['count']),
+            ))
+        .toList()
+      ..sort((a, b) => a.year.compareTo(b.year));
+    return counts;
+  }
+
+  /// Fetch related publications for a concept.
+  Future<List<Work>> getWorksWithConcept(String conceptId, {int limit = 5}) async {
+    final id = conceptId.replaceFirst('https://openalex.org/', '');
+    final data = await _get('/works', {
+      'filter': 'concepts.id:$id',
+      'sort': 'cited_by_count:desc',
+      'per_page': limit.toString(),
+      'select': 'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
+    });
+    return (data['results'] as List? ?? [])
+        .map((e) => Work.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Fetch contributing authors for a concept.
+  Future<List<AuthorStat>> getAuthorsForConcept(String conceptId, {int limit = 10}) async {
+    final id = conceptId.replaceFirst('https://openalex.org/', '');
+    final data = await _get('/works', {
+      'filter': 'concepts.id:$id',
+      'group_by': 'authorships.author.id',
+      'per_page': limit.toString(),
+    });
+    final groups = data['group_by'] as List? ?? [];
+    return groups
+        .where((g) => g['key_display_name'] != null && g['key_display_name'].toString().isNotEmpty)
+        .map((g) => AuthorStat(
+              authorId: g['key']?.toString(),
+              displayName: g['key_display_name'].toString(),
+              paperCount: _asInt(g['count']),
+            ))
+        .take(limit)
+        .toList();
+  }
+
+  /// Fetch related journals/sources for a concept.
+  Future<List<JournalStat>> getJournalsForConcept(String conceptId, {int limit = 10}) async {
+    final id = conceptId.replaceFirst('https://openalex.org/', '');
+    final data = await _get('/works', {
+      'filter': 'concepts.id:$id',
+      'group_by': 'primary_location.source.id',
+      'per_page': limit.toString(),
+    });
+    final groups = data['group_by'] as List? ?? [];
+    return groups
+        .where((g) => g['key_display_name'] != null && g['key_display_name'].toString().isNotEmpty)
+        .map((g) => JournalStat(
+              sourceId: g['key']?.toString(),
+              displayName: g['key_display_name'].toString(),
+              paperCount: _asInt(g['count']),
+            ))
+        .take(limit)
+        .toList();
+  }
+
 
   void dispose() => _client.close();
 }

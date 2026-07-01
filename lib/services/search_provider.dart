@@ -6,6 +6,8 @@ import '../models/author_detail.dart';
 import '../services/openalex_service.dart';
 import '../services/search_history_service.dart';
 import '../utils/exceptions.dart';
+import 'analytics_service.dart';
+import 'remote_config_service.dart';
 
 enum LoadState { idle, loading, success, error }
 
@@ -26,6 +28,14 @@ enum WorkSortOption {
 class SearchProvider extends ChangeNotifier {
   final OpenAlexService _service;
   final SearchHistoryService _historyService = SearchHistoryService();
+
+  bool _isDeveloperMode = false;
+  bool get isDeveloperMode => _isDeveloperMode;
+
+  void setDeveloperMode(bool val) {
+    _isDeveloperMode = val;
+    notifyListeners();
+  }
 
   SearchProvider({OpenAlexService? service})
       : _service = service ?? OpenAlexService() {
@@ -74,6 +84,20 @@ class SearchProvider extends ChangeNotifier {
   // ── NEW: Source detail ────────────────────────
   LoadState sourceDetailState = LoadState.idle;
   SourceDetail? selectedSource;
+
+  // ── LAB3: Keywords & Journal details ──────────
+  LoadState keywordsState = LoadState.idle;
+  List<KeywordStat> topKeywords = [];
+
+  LoadState keywordDetailState = LoadState.idle;
+  KeywordStat? selectedKeyword;
+  List<YearlyCount> keywordTrend = [];
+  List<AuthorStat> keywordAuthors = [];
+  List<JournalStat> keywordJournals = [];
+  List<Work> keywordWorks = [];
+
+  LoadState journalWorksState = LoadState.idle;
+  List<Work> journalWorks = [];
 
   // ── 4.6 Top authors ───────────────────────────
   LoadState authorsState = LoadState.idle;
@@ -135,6 +159,8 @@ class SearchProvider extends ChangeNotifier {
 
     searchState = LoadState.loading;
     notifyListeners();
+
+    AnalyticsService.logSearchTopic(topic);
 
     try {
       final result = await _service.searchWorks(
@@ -245,6 +271,16 @@ class SearchProvider extends ChangeNotifier {
     topJournals = [];
     sourceDetailState = LoadState.idle;
     selectedSource = null;
+    keywordsState = LoadState.idle;
+    topKeywords = [];
+    keywordDetailState = LoadState.idle;
+    selectedKeyword = null;
+    keywordTrend = [];
+    keywordAuthors = [];
+    keywordJournals = [];
+    keywordWorks = [];
+    journalWorksState = LoadState.idle;
+    journalWorks = [];
     authorsState = LoadState.idle;
     topAuthors = [];
     authorDetailState = LoadState.idle;
@@ -307,6 +343,12 @@ class SearchProvider extends ChangeNotifier {
     try {
       selectedWork = await _service.getWorkDetail(workId);
       detailState = LoadState.success;
+      if (selectedWork != null) {
+        AnalyticsService.logViewPublication(
+          title: selectedWork!.title,
+          year: selectedWork!.publicationYear,
+        );
+      }
       try {
         relatedWorks = await _service.getRelatedWorks(workId);
       } on OpenAlexException {
@@ -335,6 +377,7 @@ class SearchProvider extends ChangeNotifier {
     await Future.wait([_loadTopPapers(), _loadTopJournals()]);
     await Future.wait([_loadTopAuthors(), _loadCountryBreakdown()]);
     await _loadCountryTopicMatrix();
+    await loadTopKeywords();
 
     notifyListeners();
   }
@@ -388,15 +431,27 @@ class SearchProvider extends ChangeNotifier {
   /// NEW: Load journal/source profile. Call when user taps a journal.
   Future<void> loadSourceDetail(String sourceId) async {
     selectedSource = null;
+    journalWorks = [];
     sourceDetailState = LoadState.loading;
+    journalWorksState = LoadState.loading;
     notifyListeners();
 
     try {
       selectedSource = await _service.getSourceDetail(sourceId);
+      if (selectedSource != null) {
+        AnalyticsService.logViewJournal(selectedSource!.displayName);
+      }
       sourceDetailState = LoadState.success;
     } on OpenAlexException catch (e) {
       _setError(e.message);
       sourceDetailState = LoadState.error;
+    }
+
+    try {
+      journalWorks = await _service.getWorksInJournal(sourceId, limit: 5);
+      journalWorksState = LoadState.success;
+    } catch (e) {
+      journalWorksState = LoadState.error;
     }
     notifyListeners();
   }
@@ -427,7 +482,8 @@ class SearchProvider extends ChangeNotifier {
 
   Future<void> _loadTopJournals() async {
     try {
-      topJournals = await _service.getTopJournals(_currentTopic);
+      final limit = RemoteConfigService.maxJournalsDisplayed;
+      topJournals = await _service.getTopJournals(_currentTopic, limit: limit);
       journalsState = LoadState.success;
     } on OpenAlexException catch (e) {
       _setError(e.message);
@@ -497,6 +553,60 @@ class SearchProvider extends ChangeNotifier {
   }
 
   void _setError(String? msg) => _errorMessage = msg;
+
+  /// Load top keywords/concepts for the current topic.
+  Future<void> loadTopKeywords() async {
+    if (_currentTopic.isEmpty) return;
+    keywordsState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      final limit = RemoteConfigService.maxKeywordsDisplayed;
+      topKeywords = await _service.getTopKeywords(_currentTopic, limit: limit);
+      keywordsState = LoadState.success;
+    } catch (e) {
+      keywordsState = LoadState.error;
+      _setError(e.toString());
+    }
+    notifyListeners();
+  }
+
+  /// Load detail for a selected keyword/concept (trends, publications, authors, journals).
+  Future<void> loadKeywordDetail(KeywordStat keyword) async {
+    selectedKeyword = keyword;
+    keywordTrend = [];
+    keywordAuthors = [];
+    keywordJournals = [];
+    keywordWorks = [];
+    keywordDetailState = LoadState.loading;
+    notifyListeners();
+
+    if (keyword.conceptId == null) {
+      keywordDetailState = LoadState.error;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      await AnalyticsService.logViewKeyword(keyword.displayName);
+
+      final conceptId = keyword.conceptId!;
+      final trend = await _service.getKeywordTrend(conceptId);
+      final works = await _service.getWorksWithConcept(conceptId, limit: 5);
+      final authors = await _service.getAuthorsForConcept(conceptId, limit: 10);
+      final journals = await _service.getJournalsForConcept(conceptId, limit: 10);
+
+      keywordTrend = trend;
+      keywordWorks = works;
+      keywordAuthors = authors;
+      keywordJournals = journals;
+      keywordDetailState = LoadState.success;
+    } catch (e) {
+      keywordDetailState = LoadState.error;
+      _setError(e.toString());
+    }
+    notifyListeners();
+  }
 
   @override
   void dispose() {

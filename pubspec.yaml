@@ -42,15 +42,15 @@ dependencies:
   printing: ^5.13.1
   share_plus: ^10.0.0
   firebase_core: ^3.15.2     # Handles core Firebase initialization
-  firebase_auth: ^5.0.0     # Handles actual authentication state
-  google_sign_in: ^6.2.0    # Triggers the native Android Google overlay
+  firebase_auth: ^5.7.0     # Handles actual authentication state
+  google_sign_in: ^7.2.0    # Triggers the native Android Google overlay
   # Storage & Messaging
-  firebase_storage: ^12.0.0
-  firebase_messaging: ^15.0.0
+  firebase_storage: ^12.4.10
+  firebase_messaging: ^15.2.10
   # Analytics, Performance & Config
-  firebase_analytics: ^11.0.0
-  firebase_crashlytics: ^4.0.0
-  firebase_remote_config: ^5.0.0
+  firebase_analytics: ^11.6.0
+  firebase_crashlytics: ^4.3.10
+  firebase_remote_config: ^5.5.0
   
   # Helper for picking files to upload
   file_picker: ^8.0.0
@@ -58,6 +58,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
+  patrol: ^3.6.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
