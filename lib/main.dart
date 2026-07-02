@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 
 import 'package:journal_trend/providers/reading_list_provider.dart';
@@ -23,6 +24,7 @@ void main() async {
   // Initialize Google Sign In exactly once at startup
   try {
     await GoogleSignIn.instance.initialize(
+      clientId: kIsWeb ? '865302042692-57tmuguuht7o3q5ohir6ge0boa5tm5jn.apps.googleusercontent.com' : null,
       serverClientId: '865302042692-57tmuguuht7o3q5ohir6ge0boa5tm5jn.apps.googleusercontent.com',
     );
   } catch (e) {

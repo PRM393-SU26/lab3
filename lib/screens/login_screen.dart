@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import '../services/analytics_service.dart';
 import '../services/search_provider.dart';
+import '../providers/reading_list_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -46,16 +48,33 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     });
 
     try {
-      final GoogleSignInAccount googleUser = await GoogleSignIn.instance.authenticate();
+      if (kIsWeb) {
+        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.setCustomParameters({
+          'prompt': 'select_account'
+        });
+        final userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+        if (userCredential.user != null) {
+          if (mounted) {
+            context.read<ReadingListProvider>().load();
+          }
+          await AnalyticsService.logLogin();
+        }
+      } else {
+        final GoogleSignInAccount googleUser = await GoogleSignIn.instance.authenticate();
 
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final OAuthCredential credential = GoogleAuthProvider.credential(
+          idToken: googleAuth.idToken,
+        );
 
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-      if (userCredential.user != null) {
-        await AnalyticsService.logLogin();
+        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        if (userCredential.user != null) {
+          if (mounted) {
+            context.read<ReadingListProvider>().load();
+          }
+          await AnalyticsService.logLogin();
+        }
       }
     } catch (e) {
       // Check if it's a cancellation to avoid showing an error block for intentional cancel
@@ -82,6 +101,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       if (userCredential.user != null) {
         await userCredential.user!.updateDisplayName("Developer Account");
         await userCredential.user!.updatePhotoURL("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde");
+        if (mounted) {
+          context.read<ReadingListProvider>().load();
+        }
         await AnalyticsService.logLogin();
       }
     } catch (e) {
