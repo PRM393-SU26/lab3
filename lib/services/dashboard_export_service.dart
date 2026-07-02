@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/analytics.dart';
@@ -21,7 +22,11 @@ class DashboardExportService {
       SettableMetadata(contentType: 'application/pdf'),
     );
 
-    final snapshot = await uploadTask;
+    // Timeout after 15 seconds to prevent infinite spinner if Storage isn't setup
+    final snapshot = await uploadTask.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw Exception('Upload timed out. Please check if Firebase Storage is enabled in the console and has correct rules.'),
+    );
     final downloadUrl = await snapshot.ref.getDownloadURL();
     return downloadUrl;
   }
@@ -34,7 +39,21 @@ class DashboardExportService {
     final dateStr =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-    final doc = pw.Document();
+    final ttf = await PdfGoogleFonts.robotoRegular().timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Failed to download PDF font.'),
+    );
+    final ttfBold = await PdfGoogleFonts.robotoBold().timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('Failed to download PDF bold font.'),
+    );
+
+    final doc = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: ttf,
+        bold: ttfBold,
+      ),
+    );
 
     doc.addPage(
       pw.Page(
