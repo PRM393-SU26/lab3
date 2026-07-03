@@ -686,7 +686,30 @@ class OpenAlexService {
         .take(limit)
         .toList();
   }
-
+  /// Fetch globally popular keywords/concepts (no topic required).
+  /// Uses the /concepts endpoint sorted by works_count.
+  Future<List<KeywordStat>> getGlobalTopKeywords({int limit = 15}) async {
+    final data = await _get('/concepts', {
+      'sort': 'works_count:desc',
+      'per_page': limit.toString(),
+      'filter': 'level:1',
+      'select': 'id,display_name,works_count',
+    });
+    final results = data['results'] as List? ?? [];
+    return results
+        .where((r) => r['display_name'] != null)
+        .map((r) {
+          final rawId = r['id']?.toString() ?? '';
+          final conceptId = rawId.replaceFirst('https://openalex.org/', '');
+          return KeywordStat(
+            conceptId: conceptId,
+            displayName: r['display_name'].toString(),
+            paperCount: _asInt(r['works_count']),
+          );
+        })
+        .take(limit)
+        .toList();
+  }
 
   void dispose() => _client.close();
 }
