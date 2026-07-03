@@ -89,6 +89,10 @@ class SearchProvider extends ChangeNotifier {
   LoadState keywordsState = LoadState.idle;
   List<KeywordStat> topKeywords = [];
 
+  // ── Global keywords (no topic required) ────────
+  LoadState globalKeywordsState = LoadState.idle;
+  List<KeywordStat> globalKeywords = [];
+
   LoadState keywordDetailState = LoadState.idle;
   KeywordStat? selectedKeyword;
   List<YearlyCount> keywordTrend = [];
@@ -566,6 +570,22 @@ class SearchProvider extends ChangeNotifier {
       keywordsState = LoadState.success;
     } catch (e) {
       keywordsState = LoadState.error;
+      _setError(e.toString());
+    }
+    notifyListeners();
+  }
+
+  /// Load globally popular keywords (no topic required).
+  Future<void> loadGlobalKeywords() async {
+    globalKeywordsState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      final limit = RemoteConfigService.maxKeywordsDisplayed;
+      globalKeywords = await _service.getGlobalTopKeywords(limit: limit);
+      globalKeywordsState = LoadState.success;
+    } catch (e) {
+      globalKeywordsState = LoadState.error;
       _setError(e.toString());
     }
     notifyListeners();
