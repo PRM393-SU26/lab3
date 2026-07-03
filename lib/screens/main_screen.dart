@@ -47,8 +47,8 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Journals',
           ),
           NavigationDestination(
-            icon: Icon(Icons.tag_outlined),
-            selectedIcon: Icon(Icons.tag),
+            icon: Icon(Icons.label_outlined),
+            selectedIcon: Icon(Icons.label),
             label: 'Keywords',
           ),
           NavigationDestination(

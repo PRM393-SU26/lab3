@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +11,7 @@ import '../services/fcm_service.dart';
 import '../services/remote_config_service.dart';
 import '../services/dashboard_export_service.dart';
 import '../services/analytics_service.dart';
+import '../providers/reading_list_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -36,6 +38,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context.read<SearchProvider>().setDeveloperMode(false);
     }
     await FirebaseAuth.instance.signOut();
+    try {
+      await GoogleSignIn.instance.disconnect();
+    } catch (e) {
+      debugPrint("Google disconnect error: $e");
+    }
+    if (mounted) {
+      context.read<ReadingListProvider>().load();
+    }
   }
 
   Future<void> _exportAndUploadReport(SearchProvider provider) async {

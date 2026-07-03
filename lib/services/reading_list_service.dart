@@ -1,11 +1,14 @@
 import 'dart:convert';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../models/work.dart';
 
 class ReadingListService {
-  static const _key = 'reading_list';
+  String get _key {
+    final user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid ?? 'guest';
+    return 'reading_list_$uid';
+  }
 
   Future<List<Work>> getAll() async {
     final prefs = await SharedPreferences.getInstance();
