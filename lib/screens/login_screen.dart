@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         }
       } else {
         final GoogleSignInAccount googleUser = await GoogleSignIn.instance.authenticate();
-
+        
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
         final OAuthCredential credential = GoogleAuthProvider.credential(
           idToken: googleAuth.idToken,
@@ -77,12 +77,6 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         }
       }
     } catch (e) {
-      // Check if it's a cancellation to avoid showing an error block for intentional cancel
-      final errStr = e.toString();
-      if (errStr.contains('canceled') || errStr.contains('sign_in_canceled')) {
-        setState(() => _isLoading = false);
-        return;
-      }
       setState(() {
         _errorMessage = 'Sign-In failed: $e\n(You can use Mock Login if on an emulator)';
         _isLoading = false;
