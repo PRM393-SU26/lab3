@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:journal_trend/providers/reading_list_provider.dart';
 import 'package:journal_trend/providers/settings_provider.dart';
+import 'package:journal_trend/providers/auth_view_model.dart';
 import 'package:journal_trend/screens/main_screen.dart';
 import 'package:journal_trend/screens/search_screen.dart';
 import 'package:journal_trend/screens/login_screen.dart';
@@ -41,6 +42,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => SearchProvider()),
         ChangeNotifierProvider(create: (_) => ReadingListProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => AuthViewModel()),
       ],
       child: const JournalTrendApp(),
     ),
@@ -81,25 +83,21 @@ class _JournalTrendAppState extends State<JournalTrendApp> {
           elevation: 0,
         ),
       ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      home: Consumer2<AuthViewModel, SearchProvider>(
+        builder: (context, authProvider, searchProvider, child) {
+          if (authProvider.state == AuthState.initial && !searchProvider.isDeveloperMode) {
             return const Scaffold(
               body: Center(
                 child: CircularProgressIndicator(),
               ),
             );
           }
-          final user = snapshot.data;
-          return Consumer<SearchProvider>(
-            builder: (context, provider, child) {
-              if (user != null || provider.isDeveloperMode) {
-                return const MainScreen();
-              }
-              return const LoginScreen();
-            },
-          );
+          
+          if (authProvider.state == AuthState.authenticated || searchProvider.isDeveloperMode) {
+            return const MainScreen();
+          }
+          
+          return const LoginScreen();
         },
       ),
     );

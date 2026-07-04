@@ -5,9 +5,14 @@ import '../services/search_provider.dart';
 import '../models/analytics.dart';
 import 'source_detail_screen.dart';
 
-class JournalsScreen extends StatelessWidget {
+class JournalsScreen extends StatefulWidget {
   const JournalsScreen({super.key});
 
+  @override
+  State<JournalsScreen> createState() => _JournalsScreenState();
+}
+
+class _JournalsScreenState extends State<JournalsScreen> {
   static const _indigo      = Color(0xFF4F46E5);
   static const _indigoLight = Color(0xFFEEF2FF);
   static const _slate50    = Color(0xFFF8FAFC);
@@ -15,6 +20,87 @@ class JournalsScreen extends StatelessWidget {
   static const _slate400    = Color(0xFF94A3B8);
   static const _slate600    = Color(0xFF475569);
   static const _slate900    = Color(0xFF0F172A);
+
+  String _searchQuery = '';
+  int _minCitations = 0;
+  int _minPublications = 0;
+  String _sortOption = 'publication_desc';
+
+  void _showFilterSortDialog(BuildContext context) {
+    int tempMinCit = _minCitations;
+    int tempMinPub = _minPublications;
+    String tempSort = _sortOption;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Filter & Sort'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Min Citations:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Slider(
+                      value: tempMinCit.toDouble(),
+                      min: 0,
+                      max: 10000,
+                      divisions: 100,
+                      label: tempMinCit.toString(),
+                      onChanged: (val) => setDialogState(() => tempMinCit = val.toInt()),
+                    ),
+                    const Text('Min Publications:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Slider(
+                      value: tempMinPub.toDouble(),
+                      min: 0,
+                      max: 1000,
+                      divisions: 100,
+                      label: tempMinPub.toString(),
+                      onChanged: (val) => setDialogState(() => tempMinPub = val.toInt()),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Sort By:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    DropdownButton<String>(
+                      value: tempSort,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(value: 'publication_desc', child: Text('Publications (High to Low)')),
+                        DropdownMenuItem(value: 'citation_desc', child: Text('Citations (High to Low)')),
+                        DropdownMenuItem(value: 'a_z', child: Text('Name (A-Z)')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => tempSort = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _minCitations = tempMinCit;
+                      _minPublications = tempMinPub;
+                      _sortOption = tempSort;
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Apply'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +156,22 @@ class JournalsScreen extends StatelessWidget {
             );
           }
 
+          // Apply filtering and sorting
+          List<JournalStat> filteredJournals = provider.topJournals.where((j) {
+            final matchesSearch = j.displayName.toLowerCase().contains(_searchQuery.toLowerCase());
+            final matchesCitations = j.citationCount >= _minCitations;
+            final matchesPublications = j.paperCount >= _minPublications;
+            return matchesSearch && matchesCitations && matchesPublications;
+          }).toList();
+
+          if (_sortOption == 'publication_desc') {
+            filteredJournals.sort((a, b) => b.paperCount.compareTo(a.paperCount));
+          } else if (_sortOption == 'citation_desc') {
+            filteredJournals.sort((a, b) => b.citationCount.compareTo(a.citationCount));
+          } else if (_sortOption == 'a_z') {
+            filteredJournals.sort((a, b) => a.displayName.compareTo(b.displayName));
+          }
+
           final maxCount = provider.topJournals.map((e) => e.paperCount).fold(0, max);
           final topJournal = provider.topJournals.reduce((a, b) => a.paperCount > b.paperCount ? a : b);
           final maxHIndex = provider.topJournals.map((e) => e.hIndex).fold(0, max);
@@ -82,6 +184,50 @@ class JournalsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Search and Filter Toolbar
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Search journals...',
+                            prefixIcon: const Icon(Icons.search, color: _slate400),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: _slate200),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: _slate200),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                          ),
+                          onChanged: (val) {
+                            setState(() {
+                              _searchQuery = val;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _slate200),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.filter_list, color: _indigo),
+                          tooltip: 'Filter & Sort',
+                          onPressed: () => _showFilterSortDialog(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
                   // KPI cards
                   Row(
                     children: [
@@ -162,7 +308,7 @@ class JournalsScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         SizedBox(
                           height: 200,
-                          child: _BubbleChart(data: provider.topJournals),
+                          child: _BubbleChart(data: filteredJournals),
                         ),
                       ],
                     ),
@@ -181,111 +327,116 @@ class JournalsScreen extends StatelessWidget {
                   const SizedBox(height: 12),
 
                   // List of journals
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: provider.topJournals.length,
-                    itemBuilder: (context, index) {
-                      final j = provider.topJournals[index];
-                      final ratio = maxCount > 0 ? j.paperCount / maxCount : 0.0;
+                  filteredJournals.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Center(child: Text('No journals match your filters.', style: TextStyle(color: _slate600))),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: filteredJournals.length,
+                          itemBuilder: (context, index) {
+                            final j = filteredJournals[index];
+                            final ratio = maxCount > 0 ? j.paperCount / maxCount : 0.0;
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: _slate200),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            if (j.sourceId == null) return;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => SourceDetailScreen(
-                                  sourceId: j.sourceId!,
-                                  sourceName: j.displayName,
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: _slate200),
+                              ),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () {
+                                  if (j.sourceId == null) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => SourceDetailScreen(
+                                        sourceId: j.sourceId!,
+                                        sourceName: j.displayName,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              j.displayName,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                                color: _slate900,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Icon(Icons.arrow_forward_ios_rounded,
+                                              size: 14, color: _slate400),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      // Papers progress bar
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(4),
+                                              child: LinearProgressIndicator(
+                                                value: ratio,
+                                                backgroundColor: _indigoLight,
+                                                valueColor: const AlwaysStoppedAnimation(_indigo),
+                                                minHeight: 6,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            '${j.paperCount} papers',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: _indigo,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'h-index: ${j.hIndex}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: _slate600,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Citations: ${j.citationCount}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: _slate600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
                           },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        j.displayName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          color: _slate900,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Icon(Icons.arrow_forward_ios_rounded,
-                                        size: 14, color: _slate400),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                // Papers progress bar
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: LinearProgressIndicator(
-                                          value: ratio,
-                                          backgroundColor: _indigoLight,
-                                          valueColor: const AlwaysStoppedAnimation(_indigo),
-                                          minHeight: 6,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      '${j.paperCount} papers',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: _indigo,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'h-index: ${j.hIndex}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: _slate600,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Citations: ${j.citationCount}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: _slate600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
                         ),
-                      );
-                    },
-                  ),
                 ],
               ),
             ),
@@ -350,7 +501,7 @@ class _StatCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w500,
-              color: JournalsScreen._slate600,
+              color: _JournalsScreenState._slate600,
             ),
           ),
         ],
@@ -377,15 +528,15 @@ class _EmptyTab extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: JournalsScreen._indigoLight,
+                color: _JournalsScreenState._indigoLight,
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: const Icon(Icons.search_rounded, color: JournalsScreen._indigo, size: 28),
+              child: const Icon(Icons.search_rounded, color: _JournalsScreenState._indigo, size: 28),
             ),
             const SizedBox(height: 16),
             Text(
               message,
-              style: const TextStyle(color: JournalsScreen._slate600, fontSize: 14),
+              style: const TextStyle(color: _JournalsScreenState._slate600, fontSize: 14),
               textAlign: TextAlign.center,
             ),
           ],
