@@ -142,6 +142,59 @@ class SearchProvider extends ChangeNotifier {
   // PUBLIC METHODS
   // ─────────────────────────────────────────────
 
+  // Taxonomy State
+  List<TaxonomyItem> domains = [];
+  Map<String, List<TaxonomyItem>> fieldsByDomain = {};
+  Map<String, List<TaxonomyItem>> subfieldsByField = {};
+
+  Future<void> loadDomains() async {
+    if (domains.isEmpty) {
+      try {
+        domains = await _service.getDomains();
+        notifyListeners();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> loadFields(String domainId) async {
+    if (!fieldsByDomain.containsKey(domainId)) {
+      try {
+        fieldsByDomain[domainId] = await _service.getFields(domainId);
+        notifyListeners();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> loadSubfields(String fieldId) async {
+    if (!subfieldsByField.containsKey(fieldId)) {
+      try {
+        subfieldsByField[fieldId] = await _service.getSubfields(fieldId);
+        notifyListeners();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> applyJournalFilter({String? domainId, String? fieldId, String? subfieldId}) async {
+    journalsState = LoadState.loading;
+    notifyListeners();
+    
+    try {
+      final limit = RemoteConfigService.maxJournalsDisplayed;
+      topJournals = await _service.getTopJournals(
+        _currentTopic, 
+        limit: limit,
+        domainId: domainId,
+        fieldId: fieldId,
+        subfieldId: subfieldId,
+      );
+      journalsState = LoadState.success;
+    } catch(e) {
+      _setError(e.toString());
+      journalsState = LoadState.error;
+    }
+    notifyListeners();
+  }
+
   /// Called when user submits a new search query.
   Future<void> search(String topic, {
     bool openAccessOnly = false,
@@ -378,10 +431,9 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
 
     await _loadTrend();
-    await Future.wait([_loadTopPapers(), _loadTopJournals()]);
-    await Future.wait([_loadTopAuthors(), _loadCountryBreakdown()]);
+    await _loadTopPapers();
+    await Future.wait([_loadTopJournals(), _loadTopAuthors(), _loadCountryBreakdown()]);
     await _loadCountryTopicMatrix();
-    await loadTopKeywords();
 
     notifyListeners();
   }

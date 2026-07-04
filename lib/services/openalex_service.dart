@@ -384,12 +384,63 @@ class OpenAlexService {
   Future<List<JournalStat>> getTopJournals(
     String topic, {
     int limit = 10,
+    String? domainId,
+    String? fieldId,
+    String? subfieldId,
   }) async {
-    final data = await _get('/works', {
-      'search': topic,
+    // FAST PATH: If no topic is provided, use /sources directly instead of grouping all works in OpenAlex
+    if (topic.isEmpty) {
+      final filters = <String>['type:journal'];
+      if (subfieldId != null && subfieldId.isNotEmpty) {
+        filters.add('topic.subfield.id:$subfieldId');
+      } else if (fieldId != null && fieldId.isNotEmpty) {
+        filters.add('topic.field.id:$fieldId');
+      } else if (domainId != null && domainId.isNotEmpty) {
+        filters.add('topic.domain.id:$domainId');
+      }
+
+      final params = <String, String>{
+        'filter': filters.join(','),
+        'per_page': limit.toString(),
+        'sort': 'works_count:desc',
+      };
+
+      final data = await _get('/sources', params);
+      final results = data['results'] as List? ?? [];
+
+      return results.map((r) {
+        final summary = r['summary_stats'] as Map<String, dynamic>? ?? {};
+        return JournalStat(
+          sourceId: r['id']?.toString(),
+          displayName: r['display_name']?.toString() ?? '',
+          paperCount: _asInt(r['works_count']),
+          citationCount: _asInt(r['cited_by_count']),
+          hIndex: _asInt(summary['h_index']),
+        );
+      }).toList();
+    }
+
+    // SLOW PATH: Find top journals for a specific topic using group_by
+    final filters = <String>[];
+    if (subfieldId != null && subfieldId.isNotEmpty) {
+      filters.add('primary_topic.subfield.id:$subfieldId');
+    } else if (fieldId != null && fieldId.isNotEmpty) {
+      filters.add('primary_topic.field.id:$fieldId');
+    } else if (domainId != null && domainId.isNotEmpty) {
+      filters.add('primary_topic.domain.id:$domainId');
+    }
+
+    final params = <String, String>{
       'group_by': 'primary_location.source.id',
       'per_page': limit.toString(),
-    });
+      'search': topic,
+    };
+    
+    if (filters.isNotEmpty) {
+      params['filter'] = filters.join(',');
+    }
+
+    final data = await _get('/works', params);
 
     final groups = data['group_by'] as List? ?? [];
     final List<JournalStat> rawList = groups
@@ -709,6 +760,34 @@ class OpenAlexService {
         })
         .take(limit)
         .toList();
+  }
+
+  // ─────────────────────────────────────────────
+  // NEW: TAXONOMY (DOMAINS, FIELDS, SUBFIELDS)
+  // ─────────────────────────────────────────────
+
+  Future<List<TaxonomyItem>> getDomains() async {
+    final data = await _get('/domains', {'per_page': '10'});
+    final results = data['results'] as List? ?? [];
+    return results.map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<TaxonomyItem>> getFields(String domainId) async {
+    final data = await _get('/fields', {
+      'filter': 'domain.id:$domainId',
+      'per_page': '50',
+    });
+    final results = data['results'] as List? ?? [];
+    return results.map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<TaxonomyItem>> getSubfields(String fieldId) async {
+    final data = await _get('/subfields', {
+      'filter': 'field.id:$fieldId',
+      'per_page': '100',
+    });
+    final results = data['results'] as List? ?? [];
+    return results.map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   void dispose() => _client.close();
