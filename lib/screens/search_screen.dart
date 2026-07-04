@@ -80,7 +80,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
       appBar: AppBar(
         leading: provider.currentTopic.isNotEmpty
             ? IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(Icons.arrow_back), 
                 tooltip: 'Back to Main',
                 onPressed: () {
                   _searchController.clear();
@@ -130,6 +130,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           TextField(
+                            key: const Key('searchField'),
                             controller: _searchController,
                             focusNode: _searchFocusNode,
                             decoration: InputDecoration(
