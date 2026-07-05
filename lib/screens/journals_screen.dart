@@ -308,38 +308,42 @@ class _JournalsScreenState extends State<JournalsScreen> {
                   const SizedBox(height: 16),
 
                   // KPI cards
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Total Journals',
-                          value: '${provider.topJournals.length}',
-                          icon: Icons.menu_book_rounded,
-                          color: _indigo,
-                          bgColor: _indigoLight,
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            label: 'Total Journals',
+                            value: '${provider.topJournals.length}',
+                            icon: Icons.menu_book_rounded,
+                            color: _indigo,
+                            bgColor: _indigoLight,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Max H-Index',
-                          value: '$maxHIndex',
-                          icon: Icons.show_chart_rounded,
-                          color: const Color(0xFFD97706),
-                          bgColor: const Color(0xFFFEF3C7),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatCard(
+                            label: 'Max H-Index',
+                            value: '$maxHIndex',
+                            icon: Icons.show_chart_rounded,
+                            color: const Color(0xFFD97706),
+                            bgColor: const Color(0xFFFEF3C7),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Top Journal',
-                          value: topJournal.displayName,
-                          icon: Icons.emoji_events_rounded,
-                          color: const Color(0xFF059669),
-                          bgColor: const Color(0xFFD1FAE5),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: _StatCard(
+                      label: 'Top Journal',
+                      value: topJournal.displayName,
+                      icon: Icons.emoji_events_rounded,
+                      color: const Color(0xFF059669),
+                      bgColor: const Color(0xFFD1FAE5),
+                    ),
                   ),
                   const SizedBox(height: 20),
 
@@ -562,16 +566,15 @@ class _StatCard extends StatelessWidget {
             child: Icon(icon, color: color, size: 14),
           ),
           const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: color,
-              ),
+          Text(
+            value,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: color,
+              height: 1.2,
             ),
           ),
           const SizedBox(height: 2),
