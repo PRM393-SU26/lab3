@@ -1,1 +1,25 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"journal-trend-86de9","appId":"1:865302042692:android:7dc44d69c05c7733380411","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"journal-trend-86de9","configurations":{"android":"1:865302042692:android:7dc44d69c05c7733380411","ios":"1:865302042692:ios:57fc2dfc632ccf12380411","macos":"1:865302042692:ios:57fc2dfc632ccf12380411","web":"1:865302042692:web:14f2a09827779c89380411","windows":"1:865302042692:web:2f36e4e0036f986b380411"}}}}}}
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "prm-lab-a2526",
+                    "appId": "1:849075968130:android:c7947f4432602cb05fbc9b",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "prm-lab-a2526",
+                    "configurations": {
+                        "android": "1:849075968130:android:c7947f4432602cb05fbc9b",
+                        "ios": "1:849075968130:ios:232493f67917df185fbc9b",
+                        "macos": "1:849075968130:ios:232493f67917df185fbc9b",
+                        "web": "1:849075968130:web:cb69dea0cf038c055fbc9b",
+                        "windows": "1:849075968130:web:791054ea4a4eb1905fbc9b"
+                    }
+                }
+            }
+        }
+    }
+}
