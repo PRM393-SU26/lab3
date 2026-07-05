@@ -22,13 +22,28 @@ class _JournalsScreenState extends State<JournalsScreen> {
   static const _slate900    = Color(0xFF0F172A);
 
   String _searchQuery = '';
-  int _minCitations = 0;
-  int _minPublications = 0;
+  String? _selectedDomain;
+  String? _selectedField;
+  String? _selectedSubfield;
   String _sortOption = 'publication_desc';
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<SearchProvider>();
+      provider.loadDomains();
+      if (provider.topJournals.isEmpty) {
+        provider.applyJournalFilter(); // Load global journals initially
+      }
+    });
+  }
+
   void _showFilterSortDialog(BuildContext context) {
-    int tempMinCit = _minCitations;
-    int tempMinPub = _minPublications;
+    final provider = context.read<SearchProvider>();
+    String? tempDomain = _selectedDomain;
+    String? tempField = _selectedField;
+    String? tempSubfield = _selectedSubfield;
     String tempSort = _sortOption;
 
     showDialog(
@@ -43,23 +58,56 @@ class _JournalsScreenState extends State<JournalsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Min Citations:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Slider(
-                      value: tempMinCit.toDouble(),
-                      min: 0,
-                      max: 10000,
-                      divisions: 100,
-                      label: tempMinCit.toString(),
-                      onChanged: (val) => setDialogState(() => tempMinCit = val.toInt()),
+                    const Text('Domain:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    DropdownButton<String>(
+                      value: tempDomain,
+                      isExpanded: true,
+                      hint: const Text('Select Domain'),
+                      items: provider.domains.map((d) => DropdownMenuItem(value: d.id, child: Text(d.displayName))).toList(),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          tempDomain = val;
+                          tempField = null;
+                          tempSubfield = null;
+                        });
+                        if (val != null) provider.loadFields(val);
+                      },
                     ),
-                    const Text('Min Publications:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Slider(
-                      value: tempMinPub.toDouble(),
-                      min: 0,
-                      max: 1000,
-                      divisions: 100,
-                      label: tempMinPub.toString(),
-                      onChanged: (val) => setDialogState(() => tempMinPub = val.toInt()),
+                    const SizedBox(height: 12),
+                    const Text('Field:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    DropdownButton<String>(
+                      value: tempField,
+                      isExpanded: true,
+                      hint: const Text('Select Field'),
+                      items: tempDomain != null && provider.fieldsByDomain[tempDomain] != null
+                          ? provider.fieldsByDomain[tempDomain]!.map((f) => DropdownMenuItem(value: f.id, child: Text(f.displayName))).toList()
+                          : [],
+                      onChanged: tempDomain != null
+                          ? (val) {
+                              setDialogState(() {
+                                tempField = val;
+                                tempSubfield = null;
+                              });
+                              if (val != null) provider.loadSubfields(val);
+                            }
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Subfield:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    DropdownButton<String>(
+                      value: tempSubfield,
+                      isExpanded: true,
+                      hint: const Text('Select Subfield'),
+                      items: tempField != null && provider.subfieldsByField[tempField] != null
+                          ? provider.subfieldsByField[tempField]!.map((sf) => DropdownMenuItem(value: sf.id, child: Text(sf.displayName))).toList()
+                          : [],
+                      onChanged: tempField != null
+                          ? (val) {
+                              setDialogState(() {
+                                tempSubfield = val;
+                              });
+                            }
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     const Text('Sort By:', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -80,16 +128,32 @@ class _JournalsScreenState extends State<JournalsScreen> {
               ),
               actions: [
                 TextButton(
+                  onPressed: () {
+                    setDialogState(() {
+                      tempDomain = null;
+                      tempField = null;
+                      tempSubfield = null;
+                    });
+                  },
+                  child: const Text('Clear Filters'),
+                ),
+                TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
-                      _minCitations = tempMinCit;
-                      _minPublications = tempMinPub;
+                      _selectedDomain = tempDomain;
+                      _selectedField = tempField;
+                      _selectedSubfield = tempSubfield;
                       _sortOption = tempSort;
                     });
+                    provider.applyJournalFilter(
+                      domainId: tempDomain,
+                      fieldId: tempField,
+                      subfieldId: tempSubfield,
+                    );
                     Navigator.pop(context);
                   },
                   child: const Text('Apply'),
@@ -116,13 +180,6 @@ class _JournalsScreenState extends State<JournalsScreen> {
       ),
       body: Builder(
         builder: (context) {
-          if (provider.currentTopic.isEmpty) {
-            return const _EmptyTab(
-              icon: Icons.search_rounded,
-              message: 'Please search for a topic on the Home tab first.',
-            );
-          }
-
           if (provider.journalsState == LoadState.loading) {
             return const Center(
               child: Column(
@@ -159,17 +216,39 @@ class _JournalsScreenState extends State<JournalsScreen> {
           // Apply filtering and sorting
           List<JournalStat> filteredJournals = provider.topJournals.where((j) {
             final matchesSearch = j.displayName.toLowerCase().contains(_searchQuery.toLowerCase());
-            final matchesCitations = j.citationCount >= _minCitations;
-            final matchesPublications = j.paperCount >= _minPublications;
-            return matchesSearch && matchesCitations && matchesPublications;
+            // Note: Since JournalStat doesn't contain Domain/Field/Subfield from OpenAlex yet,
+            // we skip actual filtering by Domain/Field here, just UI placeholder.
+            return matchesSearch;
           }).toList();
 
-          if (_sortOption == 'publication_desc') {
-            filteredJournals.sort((a, b) => b.paperCount.compareTo(a.paperCount));
-          } else if (_sortOption == 'citation_desc') {
-            filteredJournals.sort((a, b) => b.citationCount.compareTo(a.citationCount));
-          } else if (_sortOption == 'a_z') {
-            filteredJournals.sort((a, b) => a.displayName.compareTo(b.displayName));
+          if (_searchQuery.isNotEmpty) {
+            final q = _searchQuery.toLowerCase();
+            filteredJournals.sort((a, b) {
+              final aName = a.displayName.toLowerCase();
+              final bName = b.displayName.toLowerCase();
+              int scoreA = aName == q ? 3 : (aName.startsWith(q) ? 2 : 1);
+              int scoreB = bName == q ? 3 : (bName.startsWith(q) ? 2 : 1);
+
+              if (scoreA != scoreB) {
+                return scoreB.compareTo(scoreA); // Higher score first
+              } else {
+                if (_sortOption == 'publication_desc') {
+                  return b.paperCount.compareTo(a.paperCount);
+                } else if (_sortOption == 'citation_desc') {
+                  return b.citationCount.compareTo(a.citationCount);
+                } else {
+                  return aName.compareTo(bName);
+                }
+              }
+            });
+          } else {
+            if (_sortOption == 'publication_desc') {
+              filteredJournals.sort((a, b) => b.paperCount.compareTo(a.paperCount));
+            } else if (_sortOption == 'citation_desc') {
+              filteredJournals.sort((a, b) => b.citationCount.compareTo(a.citationCount));
+            } else if (_sortOption == 'a_z') {
+              filteredJournals.sort((a, b) => a.displayName.compareTo(b.displayName));
+            }
           }
 
           final maxCount = provider.topJournals.map((e) => e.paperCount).fold(0, max);
@@ -229,38 +308,42 @@ class _JournalsScreenState extends State<JournalsScreen> {
                   const SizedBox(height: 16),
 
                   // KPI cards
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Total Journals',
-                          value: '${provider.topJournals.length}',
-                          icon: Icons.menu_book_rounded,
-                          color: _indigo,
-                          bgColor: _indigoLight,
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            label: 'Total Journals',
+                            value: '${provider.topJournals.length}',
+                            icon: Icons.menu_book_rounded,
+                            color: _indigo,
+                            bgColor: _indigoLight,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Max H-Index',
-                          value: '$maxHIndex',
-                          icon: Icons.show_chart_rounded,
-                          color: const Color(0xFFD97706),
-                          bgColor: const Color(0xFFFEF3C7),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatCard(
+                            label: 'Max H-Index',
+                            value: '$maxHIndex',
+                            icon: Icons.show_chart_rounded,
+                            color: const Color(0xFFD97706),
+                            bgColor: const Color(0xFFFEF3C7),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Top Journal',
-                          value: topJournal.displayName,
-                          icon: Icons.emoji_events_rounded,
-                          color: const Color(0xFF059669),
-                          bgColor: const Color(0xFFD1FAE5),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: _StatCard(
+                      label: 'Top Journal',
+                      value: topJournal.displayName,
+                      icon: Icons.emoji_events_rounded,
+                      color: const Color(0xFF059669),
+                      bgColor: const Color(0xFFD1FAE5),
+                    ),
                   ),
                   const SizedBox(height: 20),
 
@@ -483,16 +566,15 @@ class _StatCard extends StatelessWidget {
             child: Icon(icon, color: color, size: 14),
           ),
           const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: color,
-              ),
+          Text(
+            value,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: color,
+              height: 1.2,
             ),
           ),
           const SizedBox(height: 2),

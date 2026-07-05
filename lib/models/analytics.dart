@@ -98,4 +98,17 @@ class KeywordStat {
   });
 }
 
+/// A taxonomy item (Domain, Field, or Subfield) from OpenAlex
+class TaxonomyItem {
+  final String id;
+  final String displayName;
+  
+  TaxonomyItem({required this.id, required this.displayName});
 
+  factory TaxonomyItem.fromJson(Map<String, dynamic> json) {
+    return TaxonomyItem(
+      id: json['id'].toString().split('/').last,
+      displayName: json['display_name'] ?? 'Unknown',
+    );
+  }
+}

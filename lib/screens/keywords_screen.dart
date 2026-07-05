@@ -52,19 +52,10 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<SearchProvider>();
 
-    // Use topic-specific keywords if a topic was searched, otherwise global
-    final hasTopicKeywords =
-        provider.currentTopic.isNotEmpty && provider.topKeywords.isNotEmpty;
-    final keywords =
-        hasTopicKeywords ? provider.topKeywords : provider.globalKeywords;
-    final loadState =
-        hasTopicKeywords ? provider.keywordsState : provider.globalKeywordsState;
-    final headerLabel = hasTopicKeywords
-        ? 'Keywords for "${provider.currentTopic}"'
-        : 'Trending Research Keywords';
-    final subtitleLabel = hasTopicKeywords
-        ? '${keywords.length} research concepts discovered'
-        : '${keywords.length} most popular research concepts globally';
+    final keywords = provider.globalKeywords;
+    final loadState = provider.globalKeywordsState;
+    const headerLabel = 'Trending Research Keywords';
+    final subtitleLabel = '${keywords.length} most popular research concepts globally';
 
     return Scaffold(
       backgroundColor: KeywordsScreen._slate50,
