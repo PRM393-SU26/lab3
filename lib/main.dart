@@ -23,7 +23,7 @@ void main() async {
   // Initialize Google Sign In exactly once at startup
   try {
     await GoogleSignIn.instance.initialize(
-      serverClientId: '865302042692-57tmuguuht7o3q5ohir6ge0boa5tm5jn.apps.googleusercontent.com',
+      serverClientId: DefaultFirebaseOptions.currentPlatform.androidClientId,
     );
   } catch (e) {
     debugPrint("Google Sign In init failed: $e");

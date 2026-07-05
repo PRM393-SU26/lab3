@@ -1,26 +1,51 @@
 {
   "project_info": {
-    "project_number": "865302042692",
-    "project_id": "journal-trend-86de9",
-    "storage_bucket": "journal-trend-86de9.firebasestorage.app"
+    "project_number": "849075968130",
+    "project_id": "prm-lab-a2526",
+    "storage_bucket": "prm-lab-a2526.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:865302042692:android:7dc44d69c05c7733380411",
+        "mobilesdk_app_id": "1:849075968130:android:c7947f4432602cb05fbc9b",
         "android_client_info": {
           "package_name": "com.example.journal_trend"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "849075968130-l332ee4lcqr6t4ukpqc17cemb6nc6v22.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.journal_trend",
+            "certificate_hash": "9ded5028dd671c28c9d041934965c0c4bf8c8d4e"
+          }
+        },
+        {
+          "client_id": "849075968130-d588h9ng1dq6sikja7e8v7muicrrgq9k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyDhKP8MsXlVlMP_RiatXiDi-ham15nm7s4"
+          "current_key": "AIzaSyAaHneR2Lo8kpKwt1TBsKK_ENJnv3zTurg"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "849075968130-d588h9ng1dq6sikja7e8v7muicrrgq9k.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "849075968130-s0o4q1vogtmceuq4ndom43mln9enji31.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.journalTrend"
+              }
+            }
+          ]
         }
       }
     }
