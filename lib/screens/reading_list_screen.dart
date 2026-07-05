@@ -158,8 +158,30 @@ class ReadingListScreen extends StatelessWidget {
                           IconButton(
                             icon: const Icon(Icons.delete_outline),
                             tooltip: 'Remove from reading list',
-                            onPressed: () {
-                              context.read<ReadingListProvider>().remove(work.id);
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Remove from Reading List'),
+                                  content: const Text('Are you sure you want to remove this article from your reading list?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                      child: const Text('Remove'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true && context.mounted) {
+                                context.read<ReadingListProvider>().remove(work.id);
+                              }
                             },
                           ),
                         ],

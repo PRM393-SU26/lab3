@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
-import '../services/analytics_service.dart';
 import '../services/search_provider.dart';
+import '../providers/reading_list_provider.dart';
+import '../providers/auth_view_model.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,9 +12,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
-  bool _isLoading = false;
-  String? _errorMessage;
-
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -40,56 +36,21 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
 
   Future<void> _handleGoogleSignIn() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final GoogleSignInAccount googleUser = await GoogleSignIn.instance.authenticate();
-
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
-
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-      if (userCredential.user != null) {
-        await AnalyticsService.logLogin();
-      }
-    } catch (e) {
-      // Check if it's a cancellation to avoid showing an error block for intentional cancel
-      final errStr = e.toString();
-      if (errStr.contains('canceled') || errStr.contains('sign_in_canceled')) {
-        setState(() => _isLoading = false);
-        return;
-      }
-      setState(() {
-        _errorMessage = 'Sign-In failed: $e\n(You can use Mock Login if on an emulator)';
-        _isLoading = false;
-      });
+    final authViewModel = context.read<AuthViewModel>();
+    final success = await authViewModel.signInWithGoogle();
+    if (success && mounted) {
+      context.read<ReadingListProvider>().load();
     }
   }
 
   Future<void> _handleMockSignIn() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final userCredential = await FirebaseAuth.instance.signInAnonymously();
-      if (userCredential.user != null) {
-        await userCredential.user!.updateDisplayName("Developer Account");
-        await userCredential.user!.updatePhotoURL("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde");
-        await AnalyticsService.logLogin();
-      }
-    } catch (e) {
-      debugPrint("Firebase Anonymous Sign-In failed, falling back to local Developer mode: $e");
-    } finally {
-      if (mounted) {
+    final authViewModel = context.read<AuthViewModel>();
+    final success = await authViewModel.signInMock();
+    if (mounted) {
+      if (success) {
+        context.read<ReadingListProvider>().load();
+      } else {
         context.read<SearchProvider>().setDeveloperMode(true);
-        setState(() => _isLoading = false);
       }
     }
   }
@@ -97,6 +58,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final authViewModel = context.watch<AuthViewModel>();
+    final isLoading = authViewModel.isLoading;
+    final errorMessage = authViewModel.errorMessage;
 
     return Scaffold(
       body: Container(
@@ -192,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                           ),
                           const SizedBox(height: 24),
 
-                          if (_errorMessage != null) ...[
+                          if (errorMessage != null) ...[
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
@@ -201,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                 border: Border.all(color: Colors.red.shade100),
                               ),
                               child: Text(
-                                _errorMessage!,
+                                errorMessage,
                                 style: TextStyle(
                                   color: Colors.red.shade800,
                                   fontSize: 12,
@@ -213,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                             const SizedBox(height: 16),
                           ],
 
-                          if (_isLoading)
+                          if (isLoading)
                             const Center(
                               child: Padding(
                                 padding: EdgeInsets.symmetric(vertical: 8.0),

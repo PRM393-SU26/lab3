@@ -1,0 +1,70 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - heading "Keyword Analysis" [level=2]
+            - group:
+              - generic:
+                - generic: "10"
+              - generic:
+                - generic: Computer science
+              - generic:
+                - generic: Total Keywords
+              - generic:
+                - generic: Top Keyword
+              - generic:
+                - generic: Keyword Frequency Chart
+              - generic:
+                - generic: Computer science
+              - generic:
+                - generic: 3122792 papers
+              - progressbar "100"
+              - generic:
+                - generic: Artificial intelligence
+              - generic:
+                - generic: 1966210 papers
+              - progressbar "63"
+              - generic:
+                - generic: Machine learning
+              - generic:
+                - generic: 975444 papers
+              - progressbar "31"
+              - generic:
+                - generic: Mathematics
+              - generic:
+                - generic: 877299 papers
+              - progressbar "28"
+              - generic:
+                - generic: Engineering
+              - generic:
+                - generic: 854140 papers
+              - progressbar "27"
+              - generic:
+                - generic: Most Frequent Keywords
+              - generic:
+                - generic:
+                  - 'button "Computer science Associated works: 3122792" [ref=e5]'
+                  - 'button "Artificial intelligence Associated works: 1966210" [ref=e6]'
+                  - 'button "Machine learning Associated works: 975444" [ref=e7]'
+                  - 'button "Mathematics Associated works: 877299" [ref=e8]'
+                  - 'button "Engineering Associated works: 854140" [ref=e9]'
+                  - 'button "Medicine Associated works: 727956" [ref=e10]'
+                  - 'button "Biology Associated works: 708869" [ref=e11]'
+                  - 'button "Physics Associated works: 638588" [ref=e12]'
+                  - 'button "Psychology Associated works: 578838" [ref=e13]'
+                  - 'button "Philosophy Associated works: 518511" [ref=e14]'
+            - tablist:
+              - tab "Home" [ref=e15]
+              - tab "Journals" [ref=e16]
+              - tab "Keywords" [active] [selected] [ref=e17]
+              - tab "Profile" [ref=e18]:
+                - generic:
+                  - generic:
+                    - generic: Profile
+```

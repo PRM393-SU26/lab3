@@ -3,13 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:patrol/patrol.dart';
 import 'package:journal_trend/main.dart' as app;
 
+import 'test_helpers.dart';
+
 void main() {
   patrolTest(
     'E2E flow test: login, search topic, and navigate bottom navigation bar',
     ($) async {
       // 1. Start app
       app.main();
-      await $.pumpAndSettle();
+      await ensureLoginScreen($);
 
       // 2. We should be on the Login screen. Verify there is a Mock Sign-In button
       expect($('Mock/Developer Sign-In'), findsOneWidget);

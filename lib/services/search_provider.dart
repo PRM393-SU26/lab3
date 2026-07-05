@@ -89,6 +89,10 @@ class SearchProvider extends ChangeNotifier {
   LoadState keywordsState = LoadState.idle;
   List<KeywordStat> topKeywords = [];
 
+  // ── Global keywords (no topic required) ────────
+  LoadState globalKeywordsState = LoadState.idle;
+  List<KeywordStat> globalKeywords = [];
+
   LoadState keywordDetailState = LoadState.idle;
   KeywordStat? selectedKeyword;
   List<YearlyCount> keywordTrend = [];
@@ -137,6 +141,59 @@ class SearchProvider extends ChangeNotifier {
   // ─────────────────────────────────────────────
   // PUBLIC METHODS
   // ─────────────────────────────────────────────
+
+  // Taxonomy State
+  List<TaxonomyItem> domains = [];
+  Map<String, List<TaxonomyItem>> fieldsByDomain = {};
+  Map<String, List<TaxonomyItem>> subfieldsByField = {};
+
+  Future<void> loadDomains() async {
+    if (domains.isEmpty) {
+      try {
+        domains = await _service.getDomains();
+        notifyListeners();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> loadFields(String domainId) async {
+    if (!fieldsByDomain.containsKey(domainId)) {
+      try {
+        fieldsByDomain[domainId] = await _service.getFields(domainId);
+        notifyListeners();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> loadSubfields(String fieldId) async {
+    if (!subfieldsByField.containsKey(fieldId)) {
+      try {
+        subfieldsByField[fieldId] = await _service.getSubfields(fieldId);
+        notifyListeners();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> applyJournalFilter({String? domainId, String? fieldId, String? subfieldId}) async {
+    journalsState = LoadState.loading;
+    notifyListeners();
+    
+    try {
+      final limit = RemoteConfigService.maxJournalsDisplayed;
+      topJournals = await _service.getTopJournals(
+        _currentTopic, 
+        limit: limit,
+        domainId: domainId,
+        fieldId: fieldId,
+        subfieldId: subfieldId,
+      );
+      journalsState = LoadState.success;
+    } catch(e) {
+      _setError(e.toString());
+      journalsState = LoadState.error;
+    }
+    notifyListeners();
+  }
 
   /// Called when user submits a new search query.
   Future<void> search(String topic, {
@@ -374,10 +431,9 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
 
     await _loadTrend();
-    await Future.wait([_loadTopPapers(), _loadTopJournals()]);
-    await Future.wait([_loadTopAuthors(), _loadCountryBreakdown()]);
+    await _loadTopPapers();
+    await Future.wait([_loadTopJournals(), _loadTopAuthors(), _loadCountryBreakdown()]);
     await _loadCountryTopicMatrix();
-    await loadTopKeywords();
 
     notifyListeners();
   }
@@ -566,6 +622,22 @@ class SearchProvider extends ChangeNotifier {
       keywordsState = LoadState.success;
     } catch (e) {
       keywordsState = LoadState.error;
+      _setError(e.toString());
+    }
+    notifyListeners();
+  }
+
+  /// Load globally popular keywords (no topic required).
+  Future<void> loadGlobalKeywords() async {
+    globalKeywordsState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      final limit = RemoteConfigService.maxKeywordsDisplayed;
+      globalKeywords = await _service.getGlobalTopKeywords(limit: limit);
+      globalKeywordsState = LoadState.success;
+    } catch (e) {
+      globalKeywordsState = LoadState.error;
       _setError(e.toString());
     }
     notifyListeners();
