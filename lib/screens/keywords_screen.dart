@@ -8,25 +8,7 @@ import 'keyword_detail_screen.dart';
 class KeywordsScreen extends StatefulWidget {
   const KeywordsScreen({super.key});
 
-  // ── Design tokens ──────────────────────────────────────────────────
-  static const _indigo      = Color(0xFF4F46E5);
-  static const _indigoLight = Color(0xFFEEF2FF);
-  static const _violet      = Color(0xFF7C3AED);
-  static const _violetLight = Color(0xFFF5F3FF);
-  static const _emerald     = Color(0xFF059669);
-  static const _emeraldLight= Color(0xFFD1FAE5);
-  static const _amber       = Color(0xFFD97706);
-  static const _amberLight  = Color(0xFFFEF3C7);
-  static const _rose        = Color(0xFFE11D48);
-  static const _roseLight   = Color(0xFFFFF1F2);
-  static const _sky         = Color(0xFF0284C7);
-  static const _skyLight    = Color(0xFFE0F2FE);
-  static const _slate50     = Color(0xFFF8FAFC);
-  static const _slate200    = Color(0xFFE2E8F0);
-  static const _slate400    = Color(0xFF94A3B8);
-  static const _slate600    = Color(0xFF475569);
-  static const _slate900    = Color(0xFF0F172A);
-
+  
   @override
   State<KeywordsScreen> createState() => _KeywordsScreenState();
 }
@@ -50,28 +32,24 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<SearchProvider>();
+final provider = context.watch<SearchProvider>();
 
     final keywords = provider.globalKeywords;
     final loadState = provider.globalKeywordsState;
-    const headerLabel = 'Trending Research Keywords';
-    final subtitleLabel = '${keywords.length} most popular research concepts globally';
+    final headerLabel = 'Trending Research Keywords';
+    final subtitleLabel =
+        '${keywords.length} most popular research concepts globally';
 
     return Scaffold(
-      backgroundColor: KeywordsScreen._slate50,
-      appBar: AppBar(
-        title: const Text(
-          'Keyword Analysis',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: KeywordsScreen._indigo,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(title: Text('Keyword Analysis')),
       body: _buildBody(
-        context, provider, keywords, loadState, headerLabel, subtitleLabel,
-      ),
-    );
+        context,
+        provider,
+        keywords,
+        loadState,
+        headerLabel,
+        subtitleLabel));
   }
 
   Widget _buildBody(
@@ -80,20 +58,20 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
     List<KeywordStat> keywords,
     LoadState loadState,
     String headerLabel,
-    String subtitleLabel,
-  ) {
+    String subtitleLabel) {
     if (loadState == LoadState.loading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: KeywordsScreen._indigo),
+            CircularProgressIndicator(
+              color: Theme.of(context).colorScheme.primary),
             SizedBox(height: 16),
-            Text('Loading keywords…',
-                style: TextStyle(color: KeywordsScreen._slate600)),
-          ],
-        ),
-      );
+            Text(
+              'Loading keywords…',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ]));
     }
 
     if (loadState == LoadState.error) {
@@ -101,35 +79,32 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(provider.errorMessage ?? 'Failed to load keywords',
-                style: const TextStyle(color: KeywordsScreen._slate600)),
-            const SizedBox(height: 16),
+            Icon(Icons.error_outline, size: 48, color: Colors.red),
+            SizedBox(height: 16),
+            Text(
+              provider.errorMessage ?? 'Failed to load keywords',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => provider.loadGlobalKeywords(),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              icon: Icon(Icons.refresh),
+              label: Text('Retry'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: KeywordsScreen._indigo,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      );
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white)),
+          ]));
     }
 
     if (keywords.isEmpty) {
-      return const _EmptyTab(
+      return _EmptyTab(
         icon: Icons.tag_outlined,
-        message: 'No keyword data available.',
-      );
+        message: 'No keyword data available.');
     }
 
     final maxCount = keywords.map((e) => e.paperCount).fold(0, max);
-    final topKeyword =
-        keywords.reduce((a, b) => a.paperCount > b.paperCount ? a : b);
+    final topKeyword = keywords.reduce(
+      (a, b) => a.paperCount > b.paperCount ? a : b);
     final totalPapers = keywords.fold<int>(0, (s, k) => s + k.paperCount);
 
     // Trending: top 3 by paper count
@@ -138,74 +113,62 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
     final trending = trendingKeywords.take(3).toList();
 
     return RefreshIndicator(
-      color: KeywordsScreen._indigo,
+      color: Theme.of(context).colorScheme.primary,
       onRefresh: () => provider.loadGlobalKeywords(),
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        physics: AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Header banner ────────────────────────────────
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
                   begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                  end: Alignment.bottomRight),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: KeywordsScreen._indigo.withOpacity(0.25),
+                    color: Theme.of(context).colorScheme.primary.withOpacity(
+                      0.25),
                     blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
+                    offset: Offset(0, 6)),
+                ]),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.tag_rounded,
-                        color: Colors.white, size: 22),
-                  ),
-                  const SizedBox(width: 12),
+                      borderRadius: BorderRadius.circular(12)),
+                    child: Icon(
+                      Icons.tag_rounded, color: Colors.white,
+                      size: 22)),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           headerLabel,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
+                            fontSize: 16),
                           maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
+                          overflow: TextOverflow.ellipsis),
+                        SizedBox(height: 4),
                         Text(
                           subtitleLabel,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.8),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+                            fontSize: 12)),
+                      ])),
+                ])),
+            SizedBox(height: 16),
 
             // ── KPI cards ────────────────────────────────────
             Row(
@@ -214,54 +177,42 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
                   child: _KpiCard(
                     label: 'Total Keywords',
                     value: '${keywords.length}',
-                    icon: Icons.tag_outlined,
-                    color: KeywordsScreen._indigo,
-                    bgColor: KeywordsScreen._indigoLight,
-                  ),
-                ),
-                const SizedBox(width: 10),
+                    icon: Icons.tag_outlined, color: Theme.of(context).colorScheme.primary,
+                    bgColor: Theme.of(context).colorScheme.primaryContainer)),
+                SizedBox(width: 10),
                 Expanded(
                   child: _KpiCard(
                     label: 'Top Keyword',
                     value: topKeyword.displayName,
-                    icon: Icons.emoji_events_rounded,
-                    color: KeywordsScreen._emerald,
-                    bgColor: KeywordsScreen._emeraldLight,
-                  ),
-                ),
-                const SizedBox(width: 10),
+                    icon: Icons.emoji_events_rounded, color: Theme.of(context).colorScheme.secondary,
+                    bgColor: Theme.of(context).colorScheme.secondaryContainer)),
+                SizedBox(width: 10),
                 Expanded(
                   child: _KpiCard(
                     label: 'Total Works',
                     value: _formatCount(totalPapers),
-                    icon: Icons.article_outlined,
-                    color: KeywordsScreen._amber,
-                    bgColor: KeywordsScreen._amberLight,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+                    icon: Icons.article_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    bgColor: Theme.of(context).colorScheme.surfaceContainerHighest)),
+              ]),
+            SizedBox(height: 24),
 
             // ── Trending keywords ────────────────────────────
-            const _SectionHeader(
+            _SectionHeader(
               icon: Icons.trending_up_rounded,
-              title: 'Trending Keywords',
-              color: KeywordsScreen._rose,
-            ),
-            const SizedBox(height: 12),
+              title: 'Trending Keywords', color: Theme.of(context).colorScheme.error),
+            SizedBox(height: 12),
             SizedBox(
               height: 110,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: trending.length,
-                separatorBuilder: (_, i) => const SizedBox(width: 12),
+                separatorBuilder: (_, i) => SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final kw = trending[index];
                   final colors = [
-                    [KeywordsScreen._rose, KeywordsScreen._roseLight],
-                    [KeywordsScreen._violet, KeywordsScreen._violetLight],
-                    [KeywordsScreen._sky, KeywordsScreen._skyLight],
+                    [Theme.of(context).colorScheme.error, Theme.of(context).colorScheme.errorContainer],
+                    [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primaryContainer],
+                    [Theme.of(context).colorScheme.tertiary, Theme.of(context).colorScheme.tertiaryContainer],
                   ];
                   final pair = colors[index % colors.length];
 
@@ -271,306 +222,230 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
                       duration: Duration(milliseconds: 300 + index * 100),
                       curve: Curves.easeOut,
                       width: 180,
-                      padding: const EdgeInsets.all(14),
+                      padding: EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: pair[1],
                         borderRadius: BorderRadius.circular(16),
-                        border:
-                            Border.all(color: pair[0].withOpacity(0.3)),
+                        border: Border.all(color: pair[0].withOpacity(0.3)),
                         boxShadow: [
                           BoxShadow(
                             color: pair[0].withOpacity(0.08),
                             blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
+                            offset: Offset(0, 3)),
+                        ]),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.trending_up_rounded,
-                                  size: 16, color: pair[0]),
-                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.trending_up_rounded,
+                                size: 16, color: pair[0]),
+                              SizedBox(width: 4),
                               Text(
                                 '#${index + 1} Trending',
                                 style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: pair[0],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
+                                  fontSize: 10, color: pair[0])),
+                            ]),
+                          SizedBox(height: 8),
                           Expanded(
                             child: Text(
                               kw.displayName,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: KeywordsScreen._slate900,
-                              ),
+                              style: TextStyle(
+                                fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
                               maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
+                              overflow: TextOverflow.ellipsis)),
+                          SizedBox(height: 4),
                           Text(
                             '${_formatCount(kw.paperCount)} papers',
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: pair[0],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
+                              fontSize: 11, color: pair[0])),
+                        ])));
+                })),
+            SizedBox(height: 24),
 
             // ── Keyword frequency chart ──────────────────────
-            const _SectionHeader(
+            _SectionHeader(
               icon: Icons.bar_chart_rounded,
-              title: 'Keyword Frequency Chart',
-              color: KeywordsScreen._indigo,
-            ),
-            const SizedBox(height: 12),
+              title: 'Keyword Frequency Chart', color: Theme.of(context).colorScheme.primary),
+            SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: KeywordsScreen._slate200),
+                border: Border.all(color: Theme.of(context).dividerColor),
                 boxShadow: [
                   BoxShadow(
-                    color: KeywordsScreen._slate900.withOpacity(0.03),
+                    color: Theme.of(context).colorScheme.onSurface
+                        .withOpacity(0.03),
                     blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+                    offset: Offset(0, 4)),
+                ]),
               child: Column(
-                children: List.generate(
-                  min(8, keywords.length),
-                  (index) {
-                    final kw = keywords[index];
-                    final ratio =
-                        maxCount > 0 ? kw.paperCount / maxCount : 0.0;
-                    final barColors = [
-                      KeywordsScreen._indigo,
-                      KeywordsScreen._violet,
-                      KeywordsScreen._emerald,
-                      KeywordsScreen._sky,
-                      KeywordsScreen._amber,
-                      KeywordsScreen._rose,
-                      const Color(0xFF6366F1),
-                      const Color(0xFF14B8A6),
-                    ];
-                    final barColor = barColors[index % barColors.length];
+                children: List.generate(min(8, keywords.length), (index) {
+                  final kw = keywords[index];
+                  final ratio = maxCount > 0 ? kw.paperCount / maxCount : 0.0;
+                  final barColors = [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
+                    Theme.of(context).colorScheme.tertiary,
+                    Theme.of(context).colorScheme.onSurfaceVariant,
+                    Theme.of(context).colorScheme.error,
+                    Theme.of(context).colorScheme.outline,
+                    Theme.of(context).colorScheme.inversePrimary,
+                  ];
+                  final barColor = barColors[index % barColors.length];
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () =>
-                            _navigateToDetail(context, provider, kw),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    kw.displayName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      color: KeywordsScreen._slate900,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: barColor.withOpacity(0.1),
-                                    borderRadius:
-                                        BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    _formatCount(kw.paperCount),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: barColor,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0, end: ratio),
-                                duration: Duration(
-                                    milliseconds: 600 + index * 100),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, value, _) {
-                                  return LinearProgressIndicator(
-                                    value: value,
-                                    minHeight: 10,
-                                    backgroundColor:
-                                        barColor.withOpacity(0.08),
-                                    valueColor:
-                                        AlwaysStoppedAnimation(barColor),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 14),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => _navigateToDetail(context, provider, kw),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  kw.displayName,
+                                  style: TextStyle(
+                                    
+                                    fontSize: 12, color: Theme.of(context).colorScheme
+                                        .onSurface),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis)),
+                              SizedBox(width: 8),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: barColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10)),
+                                child: Text(
+                                  _formatCount(kw.paperCount),
+                                  style: TextStyle(
+                                    fontSize: 11, color: barColor))),
+                            ]),
+                          SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: ratio),
+                              duration: Duration(
+                                milliseconds: 600 + index * 100),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, _) {
+                                return LinearProgressIndicator(
+                                  value: value,
+                                  minHeight: 10,
+                                  backgroundColor: barColor.withOpacity(0.08),
+                                  valueColor: AlwaysStoppedAnimation(barColor));
+                              })),
+                        ])));
+                }))),
+            SizedBox(height: 24),
 
             // ── Keyword Statistics ───────────────────────────
-            const _SectionHeader(
+            _SectionHeader(
               icon: Icons.table_chart_rounded,
-              title: 'Keyword Statistics',
-              color: KeywordsScreen._violet,
-            ),
-            const SizedBox(height: 12),
+              title: 'Keyword Statistics', color: Theme.of(context).colorScheme.primary),
+            SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: KeywordsScreen._slate200),
+                border: Border.all(color: Theme.of(context).dividerColor),
                 boxShadow: [
                   BoxShadow(
-                    color: KeywordsScreen._slate900.withOpacity(0.03),
+                    color: Theme.of(context).colorScheme.onSurface
+                        .withOpacity(0.03),
                     blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+                    offset: Offset(0, 4)),
+                ]),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: DataTable(
-                  headingRowColor:
-                      WidgetStateProperty.all(KeywordsScreen._indigoLight),
+                  headingRowColor: WidgetStateProperty.all(
+                    Theme.of(context).colorScheme.primaryContainer),
                   columnSpacing: 16,
                   horizontalMargin: 16,
-                  headingTextStyle: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    color: KeywordsScreen._indigo,
-                  ),
-                  dataTextStyle: const TextStyle(
-                    fontSize: 12,
-                    color: KeywordsScreen._slate900,
-                  ),
-                  columns: const [
+                  headingTextStyle: TextStyle(
+                    
+                    fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                  dataTextStyle: TextStyle(
+                    fontSize: 12, color: Theme.of(context).colorScheme.onSurface),
+                  columns: [
                     DataColumn(label: Text('#')),
                     DataColumn(label: Text('Keyword')),
                     DataColumn(label: Text('Papers'), numeric: true),
                     DataColumn(label: Text('Share'), numeric: true),
                   ],
-                  rows: List.generate(
-                    min(10, keywords.length),
-                    (index) {
-                      final kw = keywords[index];
-                      final share = totalPapers > 0
-                          ? (kw.paperCount / totalPapers * 100)
-                          : 0.0;
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(
+                  rows: List.generate(min(10, keywords.length), (index) {
+                    final kw = keywords[index];
+                    final share = totalPapers > 0
+                        ? (kw.paperCount / totalPapers * 100)
+                        : 0.0;
+                    return DataRow(
+                      cells: [
+                        DataCell(
+                          Text(
                             '${index + 1}',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700),
-                          )),
-                          DataCell(
-                            InkWell(
-                              onTap: () => _navigateToDetail(
-                                  context, provider, kw),
-                              child: Text(
-                                kw.displayName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: KeywordsScreen._indigo,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                              Text(_formatCount(kw.paperCount))),
-                          DataCell(Text(
-                              '${share.toStringAsFixed(1)}%')),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+                            style: TextStyle())),
+                        DataCell(
+                          InkWell(
+                            onTap: () =>
+                                _navigateToDetail(context, provider, kw),
+                            child: Text(
+                              kw.displayName,
+                              style: TextStyle(
+                                
+                                color: Theme.of(context).colorScheme.primary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis))),
+                        DataCell(Text(_formatCount(kw.paperCount))),
+                        DataCell(Text('${share.toStringAsFixed(1)}%')),
+                      ]);
+                  })))),
+            SizedBox(height: 24),
 
             // ── Most Frequent Keywords list ──────────────────
-            const _SectionHeader(
+            _SectionHeader(
               icon: Icons.list_rounded,
-              title: 'Most Frequent Keywords',
-              color: KeywordsScreen._emerald,
-            ),
-            const SizedBox(height: 12),
+              title: 'Most Frequent Keywords', color: Theme.of(context).colorScheme.secondary),
+            SizedBox(height: 12),
 
             ListView.builder(
               shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+              physics: NeverScrollableScrollPhysics(),
               itemCount: keywords.length,
               itemBuilder: (context, index) {
                 final kw = keywords[index];
-                final ratio =
-                    maxCount > 0 ? kw.paperCount / maxCount : 0.0;
+                final ratio = maxCount > 0 ? kw.paperCount / maxCount : 0.0;
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
+                  margin: EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: KeywordsScreen._slate200),
+                    border: Border.all(
+                      color: Theme.of(context).dividerColor),
                     boxShadow: [
                       BoxShadow(
-                        color:
-                            KeywordsScreen._slate900.withOpacity(0.02),
+                        color: Theme.of(context).colorScheme.onSurface
+                            .withOpacity(0.02),
                         blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
+                        offset: Offset(0, 2)),
+                    ]),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
-                    onTap: () =>
-                        _navigateToDetail(context, provider, kw),
+                    onTap: () => _navigateToDetail(context, provider, kw),
                     child: Padding(
-                      padding: const EdgeInsets.all(14),
+                      padding: EdgeInsets.all(14),
                       child: Row(
                         children: [
                           Container(
@@ -579,97 +454,73 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  KeywordsScreen._indigo
+                                  Theme.of(context).colorScheme.primary
                                       .withOpacity(0.8),
-                                  KeywordsScreen._violet
-                                      .withOpacity(0.8),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
+                                  Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                ]),
+                              borderRadius: BorderRadius.circular(10)),
                             child: Center(
                               child: Text(
                                 '${index + 1}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
+                                  
+                                  fontSize: 13)))),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   kw.displayName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                    color: KeywordsScreen._slate900,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
+                                  style: TextStyle(
+                                    
+                                    fontSize: 13, color: Theme.of(context).colorScheme
+                                        .onSurface)),
+                                SizedBox(height: 6),
                                 Row(
                                   children: [
                                     Expanded(
                                       child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(4),
+                                        borderRadius: BorderRadius.circular(4),
                                         child: LinearProgressIndicator(
                                           value: ratio,
                                           minHeight: 5,
-                                          backgroundColor:
-                                              KeywordsScreen._indigoLight,
+                                          backgroundColor: Theme.of(context).colorScheme
+                                              .primaryContainer,
                                           valueColor:
-                                              const AlwaysStoppedAnimation(
-                                                  KeywordsScreen._indigo),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
+                                              AlwaysStoppedAnimation(
+                                                Theme.of(context).colorScheme
+                                                    .primary)))),
+                                    SizedBox(width: 10),
                                     Text(
                                       '${_formatCount(kw.paperCount)} papers',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: KeywordsScreen._slate600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_ios_rounded,
-                              size: 14,
-                              color: KeywordsScreen._slate400),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
+                                      style: TextStyle(
+                                        fontSize: 11, color: Theme.of(context).colorScheme
+                                            .onSurfaceVariant)),
+                                  ]),
+                              ])),
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14, color: Theme.of(context).colorScheme
+                                .onSurfaceVariant
+                                .withOpacity(0.5)),
+                        ]))));
+              }),
+            SizedBox(height: 32),
+          ])));
   }
 
   void _navigateToDetail(
-      BuildContext context, SearchProvider provider, KeywordStat kw) {
+    BuildContext context,
+    SearchProvider provider,
+    KeywordStat kw) {
     if (kw.conceptId == null) return;
     provider.loadKeywordDetail(kw);
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const KeywordDetailScreen()),
-    );
+      MaterialPageRoute(builder: (_) => KeywordDetailScreen()));
   }
 
   static String _formatCount(int count) {
@@ -696,27 +547,21 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(6),
+          padding: EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 16, color: color),
-        ),
-        const SizedBox(width: 10),
+            borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, size: 16, color: color)),
+        SizedBox(width: 10),
         Text(
           title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 15,
-            color: KeywordsScreen._slate900,
-          ),
-        ),
-      ],
-    );
+          style: TextStyle(
+            
+            fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
+      ]);
   }
 }
 
@@ -737,8 +582,8 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -747,46 +592,32 @@ class _KpiCard extends StatelessWidget {
           BoxShadow(
             color: color.withOpacity(0.06),
             blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+            offset: Offset(0, 3)),
+        ]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 14),
-          ),
-          const SizedBox(height: 8),
+              borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, color: color, size: 14)),
+          SizedBox(height: 8),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: color,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
+                fontSize: 14, color: color))),
+          SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: KeywordsScreen._slate600,
-            ),
-          ),
-        ],
-      ),
-    );
+              fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        ]));
   }
 }
 
@@ -798,9 +629,9 @@ class _EmptyTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: EdgeInsets.all(32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -810,27 +641,21 @@ class _EmptyTab extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    KeywordsScreen._indigo.withOpacity(0.1),
-                    KeywordsScreen._violet.withOpacity(0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(icon, color: KeywordsScreen._indigo, size: 32),
-            ),
-            const SizedBox(height: 20),
+                    Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  ]),
+                borderRadius: BorderRadius.circular(20)),
+              child: Icon(
+                icon, color: Theme.of(context).colorScheme.primary,
+                size: 32)),
+            SizedBox(height: 20),
             Text(
               message,
-              style: const TextStyle(
-                color: KeywordsScreen._slate600,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
+                fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center),
+          ])));
   }
 }

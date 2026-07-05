@@ -150,7 +150,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                              fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
                             ),
                             onChanged: (val) {
                               context.read<SearchProvider>().fetchSuggestions(val);
@@ -201,7 +201,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                                     shrinkWrap: true,
                                     padding: EdgeInsets.zero,
                                     itemCount: provider.suggestions.length,
-                                    separatorBuilder: (_, __) => Divider(
+                                    separatorBuilder: (_, _) => Divider(
                                       height: 1,
                                       color: theme.colorScheme.outlineVariant,
                                     ),

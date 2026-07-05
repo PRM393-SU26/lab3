@@ -13,14 +13,6 @@ class JournalsScreen extends StatefulWidget {
 }
 
 class _JournalsScreenState extends State<JournalsScreen> {
-  static const _indigo      = Color(0xFF4F46E5);
-  static const _indigoLight = Color(0xFFEEF2FF);
-  static const _slate50    = Color(0xFFF8FAFC);
-  static const _slate200    = Color(0xFFE2E8F0);
-  static const _slate400    = Color(0xFF94A3B8);
-  static const _slate600    = Color(0xFF475569);
-  static const _slate900    = Color(0xFF0F172A);
-
   String _searchQuery = '';
   String? _selectedDomain;
   String? _selectedField;
@@ -52,18 +44,28 @@ class _JournalsScreenState extends State<JournalsScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Filter & Sort'),
+              title: Text('Filter & Sort'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Domain:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Domain:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     DropdownButton<String>(
                       value: tempDomain,
                       isExpanded: true,
-                      hint: const Text('Select Domain'),
-                      items: provider.domains.map((d) => DropdownMenuItem(value: d.id, child: Text(d.displayName))).toList(),
+                      hint: Text('Select Domain'),
+                      items: provider.domains
+                          .map(
+                            (d) => DropdownMenuItem(
+                              value: d.id,
+                              child: Text(d.displayName),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (val) {
                         setDialogState(() {
                           tempDomain = val;
@@ -73,14 +75,26 @@ class _JournalsScreenState extends State<JournalsScreen> {
                         if (val != null) provider.loadFields(val);
                       },
                     ),
-                    const SizedBox(height: 12),
-                    const Text('Field:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    SizedBox(height: 12),
+                    Text(
+                      'Field:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     DropdownButton<String>(
                       value: tempField,
                       isExpanded: true,
-                      hint: const Text('Select Field'),
-                      items: tempDomain != null && provider.fieldsByDomain[tempDomain] != null
-                          ? provider.fieldsByDomain[tempDomain]!.map((f) => DropdownMenuItem(value: f.id, child: Text(f.displayName))).toList()
+                      hint: Text('Select Field'),
+                      items:
+                          tempDomain != null &&
+                              provider.fieldsByDomain[tempDomain] != null
+                          ? provider.fieldsByDomain[tempDomain]!
+                                .map(
+                                  (f) => DropdownMenuItem(
+                                    value: f.id,
+                                    child: Text(f.displayName),
+                                  ),
+                                )
+                                .toList()
                           : [],
                       onChanged: tempDomain != null
                           ? (val) {
@@ -92,14 +106,26 @@ class _JournalsScreenState extends State<JournalsScreen> {
                             }
                           : null,
                     ),
-                    const SizedBox(height: 12),
-                    const Text('Subfield:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    SizedBox(height: 12),
+                    Text(
+                      'Subfield:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     DropdownButton<String>(
                       value: tempSubfield,
                       isExpanded: true,
-                      hint: const Text('Select Subfield'),
-                      items: tempField != null && provider.subfieldsByField[tempField] != null
-                          ? provider.subfieldsByField[tempField]!.map((sf) => DropdownMenuItem(value: sf.id, child: Text(sf.displayName))).toList()
+                      hint: Text('Select Subfield'),
+                      items:
+                          tempField != null &&
+                              provider.subfieldsByField[tempField] != null
+                          ? provider.subfieldsByField[tempField]!
+                                .map(
+                                  (sf) => DropdownMenuItem(
+                                    value: sf.id,
+                                    child: Text(sf.displayName),
+                                  ),
+                                )
+                                .toList()
                           : [],
                       onChanged: tempField != null
                           ? (val) {
@@ -109,15 +135,27 @@ class _JournalsScreenState extends State<JournalsScreen> {
                             }
                           : null,
                     ),
-                    const SizedBox(height: 16),
-                    const Text('Sort By:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    SizedBox(height: 16),
+                    Text(
+                      'Sort By:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     DropdownButton<String>(
                       value: tempSort,
                       isExpanded: true,
-                      items: const [
-                        DropdownMenuItem(value: 'publication_desc', child: Text('Publications (High to Low)')),
-                        DropdownMenuItem(value: 'citation_desc', child: Text('Citations (High to Low)')),
-                        DropdownMenuItem(value: 'a_z', child: Text('Name (A-Z)')),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'publication_desc',
+                          child: Text('Publications (High to Low)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'citation_desc',
+                          child: Text('Citations (High to Low)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'a_z',
+                          child: Text('Name (A-Z)'),
+                        ),
                       ],
                       onChanged: (val) {
                         if (val != null) setDialogState(() => tempSort = val);
@@ -135,11 +173,11 @@ class _JournalsScreenState extends State<JournalsScreen> {
                       tempSubfield = null;
                     });
                   },
-                  child: const Text('Clear Filters'),
+                  child: Text('Clear Filters'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -156,7 +194,7 @@ class _JournalsScreenState extends State<JournalsScreen> {
                     );
                     Navigator.pop(context);
                   },
-                  child: const Text('Apply'),
+                  child: Text('Apply'),
                 ),
               ],
             );
@@ -169,25 +207,22 @@ class _JournalsScreenState extends State<JournalsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SearchProvider>();
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: _slate50,
-      appBar: AppBar(
-        title: const Text('Journal Analysis'),
-        backgroundColor: _indigo,
-        foregroundColor: Colors.white,
-      ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(title: Text('Journal Analysis')),
       body: Builder(
         builder: (context) {
           if (provider.journalsState == LoadState.loading) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: _indigo),
+                  CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
                   SizedBox(height: 16),
-                  Text('Loading journals statistics...', style: TextStyle(color: _slate600)),
+                  Text(
+                    'Loading journals statistics...',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
                 ],
               ),
             );
@@ -198,16 +233,21 @@ class _JournalsScreenState extends State<JournalsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(provider.errorMessage ?? 'Failed to load journals', style: const TextStyle(color: _slate600)),
+                  Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text(
+                    provider.errorMessage ?? 'Failed to load journals',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             );
           }
 
           if (provider.topJournals.isEmpty) {
-            return const _EmptyTab(
+            return _EmptyTab(
               icon: Icons.menu_book_rounded,
               message: 'No journal statistics available for this topic.',
             );
@@ -215,7 +255,9 @@ class _JournalsScreenState extends State<JournalsScreen> {
 
           // Apply filtering and sorting
           List<JournalStat> filteredJournals = provider.topJournals.where((j) {
-            final matchesSearch = j.displayName.toLowerCase().contains(_searchQuery.toLowerCase());
+            final matchesSearch = j.displayName.toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            );
             // Note: Since JournalStat doesn't contain Domain/Field/Subfield from OpenAlex yet,
             // we skip actual filtering by Domain/Field here, just UI placeholder.
             return matchesSearch;
@@ -243,23 +285,35 @@ class _JournalsScreenState extends State<JournalsScreen> {
             });
           } else {
             if (_sortOption == 'publication_desc') {
-              filteredJournals.sort((a, b) => b.paperCount.compareTo(a.paperCount));
+              filteredJournals.sort(
+                (a, b) => b.paperCount.compareTo(a.paperCount),
+              );
             } else if (_sortOption == 'citation_desc') {
-              filteredJournals.sort((a, b) => b.citationCount.compareTo(a.citationCount));
+              filteredJournals.sort(
+                (a, b) => b.citationCount.compareTo(a.citationCount),
+              );
             } else if (_sortOption == 'a_z') {
-              filteredJournals.sort((a, b) => a.displayName.compareTo(b.displayName));
+              filteredJournals.sort(
+                (a, b) => a.displayName.compareTo(b.displayName),
+              );
             }
           }
 
-          final maxCount = provider.topJournals.map((e) => e.paperCount).fold(0, max);
-          final topJournal = provider.topJournals.reduce((a, b) => a.paperCount > b.paperCount ? a : b);
-          final maxHIndex = provider.topJournals.map((e) => e.hIndex).fold(0, max);
+          final maxCount = provider.topJournals
+              .map((e) => e.paperCount)
+              .fold(0, max);
+          final topJournal = provider.topJournals.reduce(
+            (a, b) => a.paperCount > b.paperCount ? a : b,
+          );
+          final maxHIndex = provider.topJournals
+              .map((e) => e.hIndex)
+              .fold(0, max);
 
           return RefreshIndicator(
             onRefresh: () => provider.loadTrendAnalysis(),
             child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
+              physics: AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -270,18 +324,29 @@ class _JournalsScreenState extends State<JournalsScreen> {
                         child: TextField(
                           decoration: InputDecoration(
                             hintText: 'Search journals...',
-                            prefixIcon: const Icon(Icons.search, color: _slate400),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant
+                                  .withOpacity(0.5),
+                            ),
                             filled: true,
                             fillColor: Colors.white,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: _slate200),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).dividerColor,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: _slate200),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).dividerColor,
+                              ),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 0,
+                              horizontal: 16,
+                            ),
                           ),
                           onChanged: (val) {
                             setState(() {
@@ -290,22 +355,25 @@ class _JournalsScreenState extends State<JournalsScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _slate200),
+                          border: Border.all(color: Theme.of(context).dividerColor),
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.filter_list, color: _indigo),
+                          icon: Icon(
+                            Icons.filter_list,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                           tooltip: 'Filter & Sort',
                           onPressed: () => _showFilterSortDialog(context),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // KPI cards
                   IntrinsicHeight(
@@ -317,55 +385,55 @@ class _JournalsScreenState extends State<JournalsScreen> {
                             label: 'Total Journals',
                             value: '${provider.topJournals.length}',
                             icon: Icons.menu_book_rounded,
-                            color: _indigo,
-                            bgColor: _indigoLight,
+                            color: Theme.of(context).colorScheme.primary,
+                            bgColor: Theme.of(context).colorScheme.primaryContainer,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: _StatCard(
                             label: 'Max H-Index',
                             value: '$maxHIndex',
                             icon: Icons.show_chart_rounded,
-                            color: const Color(0xFFD97706),
-                            bgColor: const Color(0xFFFEF3C7),
+                            color: Color(0xFFD97706),
+                            bgColor: Color(0xFFFEF3C7),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: _StatCard(
                       label: 'Top Journal',
                       value: topJournal.displayName,
                       icon: Icons.emoji_events_rounded,
-                      color: const Color(0xFF059669),
-                      bgColor: const Color(0xFFD1FAE5),
+                      color: Color(0xFF059669),
+                      bgColor: Color(0xFFD1FAE5),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // Bubble Chart
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _slate200),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                       boxShadow: [
                         BoxShadow(
-                          color: _slate900.withOpacity(0.02),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.02),
                           blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          offset: Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Column(
@@ -376,19 +444,22 @@ class _JournalsScreenState extends State<JournalsScreen> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.w800,
                                     fontSize: 15,
-                                    color: _slate900,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                   ),
                                 ),
                                 SizedBox(height: 4),
                                 Text(
                                   'X: H-Index · Y: Papers · Color/Size: Citations',
-                                  style: TextStyle(fontSize: 11, color: _slate600),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         SizedBox(
                           height: 200,
                           child: _BubbleChart(data: filteredJournals),
@@ -396,39 +467,48 @@ class _JournalsScreenState extends State<JournalsScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // Journal Rankings Title
-                  const Text(
+                  Text(
                     'Journal Rankings',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
-                      color: _slate900,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
 
                   // List of journals
                   filteredJournals.isEmpty
-                      ? const Padding(
+                      ? Padding(
                           padding: EdgeInsets.all(32.0),
-                          child: Center(child: Text('No journals match your filters.', style: TextStyle(color: _slate600))),
+                          child: Center(
+                            child: Text(
+                              'No journals match your filters.',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
                         )
                       : ListView.builder(
                           shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
+                          physics: NeverScrollableScrollPhysics(),
                           itemCount: filteredJournals.length,
                           itemBuilder: (context, index) {
                             final j = filteredJournals[index];
-                            final ratio = maxCount > 0 ? j.paperCount / maxCount : 0.0;
+                            final ratio = maxCount > 0
+                                ? j.paperCount / maxCount
+                                : 0.0;
 
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
+                              margin: EdgeInsets.only(bottom: 10),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: _slate200),
+                                border: Border.all(color: Theme.of(context).dividerColor),
                               ),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(14),
@@ -445,70 +525,86 @@ class _JournalsScreenState extends State<JournalsScreen> {
                                   );
                                 },
                                 child: Padding(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: EdgeInsets.all(16),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Expanded(
                                             child: Text(
                                               j.displayName,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontWeight: FontWeight.w700,
                                                 fontSize: 14,
-                                                color: _slate900,
+                                                color:
+                                                    Theme.of(context).colorScheme.onSurface,
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
-                                          const Icon(Icons.arrow_forward_ios_rounded,
-                                              size: 14, color: _slate400),
+                                          SizedBox(width: 8),
+                                          Icon(
+                                            Icons.arrow_forward_ios_rounded,
+                                            size: 14,
+                                            color: Theme.of(context).colorScheme
+                                                .onSurfaceVariant
+                                                .withOpacity(0.5),
+                                          ),
                                         ],
                                       ),
-                                      const SizedBox(height: 12),
+                                      SizedBox(height: 12),
                                       // Papers progress bar
                                       Row(
                                         children: [
                                           Expanded(
                                             child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(4),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
                                               child: LinearProgressIndicator(
                                                 value: ratio,
-                                                backgroundColor: _indigoLight,
-                                                valueColor: const AlwaysStoppedAnimation(_indigo),
+                                                backgroundColor: Theme.of(context).colorScheme
+                                                    .primaryContainer,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation(
+                                                      Theme.of(context).colorScheme.primary,
+                                                    ),
                                                 minHeight: 6,
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
+                                          SizedBox(width: 12),
                                           Text(
                                             '${j.paperCount} papers',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
-                                              color: _indigo,
+                                              color: Theme.of(context).colorScheme.primary,
                                             ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 8),
+                                      SizedBox(height: 8),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             'h-index: ${j.hIndex}',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 11,
-                                              color: _slate600,
+                                              color: Theme.of(context).colorScheme
+                                                  .onSurfaceVariant,
                                             ),
                                           ),
                                           Text(
                                             'Citations: ${j.citationCount}',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 11,
-                                              color: _slate600,
+                                              color: Theme.of(context).colorScheme
+                                                  .onSurfaceVariant,
                                             ),
                                           ),
                                         ],
@@ -548,7 +644,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -558,14 +654,14 @@ class _StatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(5),
+            padding: EdgeInsets.all(5),
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 14),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             value,
             maxLines: 3,
@@ -577,13 +673,13 @@ class _StatCard extends StatelessWidget {
               height: 1.2,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w500,
-              color: _JournalsScreenState._slate600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -602,7 +698,7 @@ class _EmptyTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: EdgeInsets.all(32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -610,15 +706,22 @@ class _EmptyTab extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: _JournalsScreenState._indigoLight,
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: const Icon(Icons.search_rounded, color: _JournalsScreenState._indigo, size: 28),
+              child: Icon(
+                Icons.search_rounded,
+                color: Theme.of(context).colorScheme.primary,
+                size: 28,
+              ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text(
               message,
-              style: const TextStyle(color: _JournalsScreenState._slate600, fontSize: 14),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 14,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -643,11 +746,11 @@ class _BubbleChartState extends State<_BubbleChart> {
   Color _getRGBColor(double ratio) {
     ratio = ratio.clamp(0.0, 1.0);
     final colors = [
-      const Color(0xFF0000FF),
-      const Color(0xFF00FFFF),
-      const Color(0xFF00FF00),
-      const Color(0xFFFFFF00),
-      const Color(0xFFFF0000),
+      Color(0xFF0000FF),
+      Color(0xFF00FFFF),
+      Color(0xFF00FF00),
+      Color(0xFFFFFF00),
+      Color(0xFFFF0000),
     ];
     if (ratio == 0.0) return colors.first;
     if (ratio == 1.0) return colors.last;
@@ -661,7 +764,7 @@ class _BubbleChartState extends State<_BubbleChart> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.data.isEmpty) return const SizedBox();
+    if (widget.data.isEmpty) return SizedBox();
 
     final maxH = widget.data.map((e) => e.hIndex).fold(0, max);
     final minH = widget.data.map((e) => e.hIndex).fold(0, min);
@@ -696,9 +799,15 @@ class _BubbleChartState extends State<_BubbleChart> {
             // Bubble markers
             ...List.generate(widget.data.length, (idx) {
               final item = widget.data[idx];
-              final xRatio = maxH == minH ? 0.5 : (item.hIndex - minH) / (maxH - minH);
-              final yRatio = maxPapers == minPapers ? 0.5 : (item.paperCount - minPapers) / (maxPapers - minPapers);
-              final sizeRatio = maxCite == minCite ? 0.5 : (item.citationCount - minCite) / (maxCite - minCite);
+              final xRatio = maxH == minH
+                  ? 0.5
+                  : (item.hIndex - minH) / (maxH - minH);
+              final yRatio = maxPapers == minPapers
+                  ? 0.5
+                  : (item.paperCount - minPapers) / (maxPapers - minPapers);
+              final sizeRatio = maxCite == minCite
+                  ? 0.5
+                  : (item.citationCount - minCite) / (maxCite - minCite);
 
               final bubbleSize = 12.0 + sizeRatio * 20.0;
               final cx = paddingX + xRatio * chartW;
@@ -724,7 +833,9 @@ class _BubbleChartState extends State<_BubbleChart> {
                       color: color.withOpacity(isSelected ? 0.9 : 0.6),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isSelected ? Colors.black : color.withOpacity(0.9),
+                        color: isSelected
+                            ? Colors.black
+                            : color.withOpacity(0.9),
                         width: isSelected ? 2.5 : 1,
                       ),
                       boxShadow: isSelected
@@ -733,7 +844,7 @@ class _BubbleChartState extends State<_BubbleChart> {
                                 color: color.withOpacity(0.5),
                                 blurRadius: 8,
                                 spreadRadius: 2,
-                              )
+                              ),
                             ]
                           : null,
                     ),
@@ -750,14 +861,21 @@ class _BubbleChartState extends State<_BubbleChart> {
                     left: 10,
                     bottom: 10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.8),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '${item.displayName}: h-index=${item.hIndex}, papers=${item.paperCount}, cites=${item.citationCount}',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   );
@@ -786,25 +904,30 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFE2E8F0)
+      ..color = Color(0xFFE2E8F0)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 
     // Draw frame
-    canvas.drawRect(
-      Rect.fromLTWH(paddingX, paddingY, chartW, chartH),
-      paint,
-    );
+    canvas.drawRect(Rect.fromLTWH(paddingX, paddingY, chartW, chartH), paint);
 
     // Grid lines
     for (int i = 1; i < 4; i++) {
       // vertical
       final vx = paddingX + (chartW / 4) * i;
-      canvas.drawLine(Offset(vx, paddingY), Offset(vx, paddingY + chartH), paint);
+      canvas.drawLine(
+        Offset(vx, paddingY),
+        Offset(vx, paddingY + chartH),
+        paint,
+      );
 
       // horizontal
       final vy = paddingY + (chartH / 4) * i;
-      canvas.drawLine(Offset(paddingX, vy), Offset(paddingX + chartW, vy), paint);
+      canvas.drawLine(
+        Offset(paddingX, vy),
+        Offset(paddingX + chartW, vy),
+        paint,
+      );
     }
   }
 

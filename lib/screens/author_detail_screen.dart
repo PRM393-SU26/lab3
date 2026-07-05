@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/search_provider.dart';
-import '../models/work.dart';
 import 'detail_screen.dart';
 
 class AuthorDetailScreen extends StatefulWidget {
@@ -457,7 +456,7 @@ class _AuthorDetailScreenState extends State<AuthorDetailScreen> {
                         ),
                       ),
                     );
-                  }).toList(),
+                  }),
 
                 const SizedBox(height: 32),
               ],
