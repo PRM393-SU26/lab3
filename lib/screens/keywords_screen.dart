@@ -15,6 +15,14 @@ class KeywordsScreen extends StatefulWidget {
 
 class _KeywordsScreenState extends State<KeywordsScreen> {
   bool _loaded = false;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -102,13 +110,23 @@ final provider = context.watch<SearchProvider>();
         message: 'No keyword data available.');
     }
 
-    final maxCount = keywords.map((e) => e.paperCount).fold(0, max);
-    final topKeyword = keywords.reduce(
-      (a, b) => a.paperCount > b.paperCount ? a : b);
-    final totalPapers = keywords.fold<int>(0, (s, k) => s + k.paperCount);
+    List<KeywordStat> filteredKeywords = keywords;
+    if (_searchQuery.isNotEmpty) {
+      filteredKeywords = keywords
+          .where((k) => k.displayName.toLowerCase().contains(_searchQuery.toLowerCase()))
+          .toList();
+    }
+
+    final maxCount = filteredKeywords.isNotEmpty 
+        ? filteredKeywords.map((e) => e.paperCount).fold(0, max) 
+        : 0;
+    final topKeyword = filteredKeywords.isNotEmpty 
+        ? filteredKeywords.reduce((a, b) => a.paperCount > b.paperCount ? a : b)
+        : null;
+    final totalPapers = filteredKeywords.fold<int>(0, (s, k) => s + k.paperCount);
 
     // Trending: top 3 by paper count
-    final trendingKeywords = List<KeywordStat>.from(keywords)
+    final trendingKeywords = List<KeywordStat>.from(filteredKeywords)
       ..sort((a, b) => b.paperCount.compareTo(a.paperCount));
     final trending = trendingKeywords.take(3).toList();
 
@@ -169,6 +187,61 @@ final provider = context.watch<SearchProvider>();
                       ])),
                 ])),
             SizedBox(height: 16),
+            
+            // ── Search bar ───────────────────────────────────
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search keywords...',
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant
+                      .withOpacity(0.5),
+                ),
+                suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          _searchQuery = '';
+                          _searchController.clear();
+                        });
+                      },
+                    )
+                  : null,
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).dividerColor,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).dividerColor,
+                  ),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 16,
+                ),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                });
+              },
+            ),
+            SizedBox(height: 16),
+
+            if (filteredKeywords.isEmpty)
+              _EmptyTab(
+                icon: Icons.search_off_rounded,
+                message: 'No keywords match your search.',
+              )
+            else ...[
 
             // ── KPI cards ────────────────────────────────────
             Row(
@@ -176,14 +249,14 @@ final provider = context.watch<SearchProvider>();
                 Expanded(
                   child: _KpiCard(
                     label: 'Total Keywords',
-                    value: '${keywords.length}',
+                    value: '${filteredKeywords.length}',
                     icon: Icons.tag_outlined, color: Theme.of(context).colorScheme.primary,
                     bgColor: Theme.of(context).colorScheme.primaryContainer)),
                 SizedBox(width: 10),
                 Expanded(
                   child: _KpiCard(
                     label: 'Top Keyword',
-                    value: topKeyword.displayName,
+                    value: topKeyword?.displayName ?? 'N/A',
                     icon: Icons.emoji_events_rounded, color: Theme.of(context).colorScheme.secondary,
                     bgColor: Theme.of(context).colorScheme.secondaryContainer)),
                 SizedBox(width: 10),
@@ -283,8 +356,8 @@ final provider = context.watch<SearchProvider>();
                     offset: Offset(0, 4)),
                 ]),
               child: Column(
-                children: List.generate(min(8, keywords.length), (index) {
-                  final kw = keywords[index];
+                children: List.generate(min(8, filteredKeywords.length), (index) {
+                  final kw = filteredKeywords[index];
                   final ratio = maxCount > 0 ? kw.paperCount / maxCount : 0.0;
                   final barColors = [
                     Theme.of(context).colorScheme.primary,
@@ -385,8 +458,8 @@ final provider = context.watch<SearchProvider>();
                     DataColumn(label: Text('Papers'), numeric: true),
                     DataColumn(label: Text('Share'), numeric: true),
                   ],
-                  rows: List.generate(min(10, keywords.length), (index) {
-                    final kw = keywords[index];
+                  rows: List.generate(min(10, filteredKeywords.length), (index) {
+                    final kw = filteredKeywords[index];
                     final share = totalPapers > 0
                         ? (kw.paperCount / totalPapers * 100)
                         : 0.0;
@@ -422,9 +495,9 @@ final provider = context.watch<SearchProvider>();
             ListView.builder(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
-              itemCount: keywords.length,
+              itemCount: filteredKeywords.length,
               itemBuilder: (context, index) {
-                final kw = keywords[index];
+                final kw = filteredKeywords[index];
                 final ratio = maxCount > 0 ? kw.paperCount / maxCount : 0.0;
 
                 return Container(
@@ -509,6 +582,7 @@ final provider = context.watch<SearchProvider>();
                         ]))));
               }),
             SizedBox(height: 32),
+            ],
           ])));
   }
 

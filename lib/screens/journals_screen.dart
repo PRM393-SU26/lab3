@@ -32,7 +32,6 @@ class _JournalsScreenState extends State<JournalsScreen> {
   }
 
   void _showFilterSortDialog(BuildContext context) {
-    final provider = context.read<SearchProvider>();
     String? tempDomain = _selectedDomain;
     String? tempField = _selectedField;
     String? tempSubfield = _selectedSubfield;
@@ -43,8 +42,24 @@ class _JournalsScreenState extends State<JournalsScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text('Filter & Sort'),
+            return Consumer<SearchProvider>(
+              builder: (context, provider, _) {
+                // Prevent dropdown assertion errors when data changes
+                if (tempDomain != null && provider.fieldsByDomain[tempDomain] != null) {
+                  final validFields = provider.fieldsByDomain[tempDomain]!.map((e) => e.id).toSet();
+                  if (tempField != null && !validFields.contains(tempField)) {
+                    tempField = null;
+                  }
+                }
+                if (tempField != null && provider.subfieldsByField[tempField] != null) {
+                  final validSub = provider.subfieldsByField[tempField]!.map((e) => e.id).toSet();
+                  if (tempSubfield != null && !validSub.contains(tempSubfield)) {
+                    tempSubfield = null;
+                  }
+                }
+
+                return AlertDialog(
+                  title: Text('Filter & Sort'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -197,6 +212,8 @@ class _JournalsScreenState extends State<JournalsScreen> {
                   child: Text('Apply'),
                 ),
               ],
+            );
+              },
             );
           },
         );
