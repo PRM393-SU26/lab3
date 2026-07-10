@@ -257,14 +257,14 @@ class _AuthorDetailScreenState extends State<AuthorDetailScreen> {
                   childAspectRatio: 1.6,
                   children: [
                     _MetricCard(
-                      label: 'h-index',
+                      label: 'Impact',
                       value: '${author.hIndex}',
                       icon: Icons.trending_up_rounded,
                       color: _violet,
                       bgColor: _violetLight,
                     ),
                     _MetricCard(
-                      label: 'i10-index',
+                      label: '10+ Citations',
                       value: '${author.i10Index}',
                       icon: Icons.article_rounded,
                       color: _indigo,
