@@ -475,6 +475,47 @@ class OpenAlexService {
     return enrichedList;
   }
 
+  /// Search journals by name directly using the /sources endpoint
+  Future<List<JournalStat>> searchJournalsByName(String query, {
+    int limit = 50,
+    String? domainId,
+    String? fieldId,
+    String? subfieldId,
+  }) async {
+    final params = <String, String>{
+      'search': query,
+      'filter': 'type:journal',
+      'per_page': '100', // Fetch more for local filtering
+      'sort': 'works_count:desc',
+    };
+    final data = await _get('/sources', params);
+    final results = data['results'] as List? ?? [];
+
+    final hasFilter = domainId != null || fieldId != null || subfieldId != null;
+
+    final filtered = results.where((r) {
+      if (!hasFilter) return true;
+      final topics = r['topics'] as List? ?? [];
+      for (var t in topics) {
+        if (domainId != null && t['domain']?['id']?.toString().endsWith(domainId) == true) return true;
+        if (fieldId != null && t['field']?['id']?.toString().endsWith(fieldId) == true) return true;
+        if (subfieldId != null && t['subfield']?['id']?.toString().endsWith(subfieldId) == true) return true;
+      }
+      return false;
+    }).take(limit).toList();
+
+    return filtered.map((r) {
+      final summary = r['summary_stats'] as Map<String, dynamic>? ?? {};
+      return JournalStat(
+        sourceId: r['id']?.toString(),
+        displayName: r['display_name']?.toString() ?? '',
+        paperCount: _asInt(r['works_count']),
+        citationCount: _asInt(r['cited_by_count']),
+        hIndex: _asInt(summary['h_index']),
+      );
+    }).toList();
+  }
+
   // ─────────────────────────────────────────────
   // NEW: SOURCE (JOURNAL) DETAIL
   // ─────────────────────────────────────────────
