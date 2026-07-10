@@ -174,19 +174,29 @@ class SearchProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> applyJournalFilter({String? domainId, String? fieldId, String? subfieldId}) async {
+  Future<void> applyJournalFilter({String? query, String? domainId, String? fieldId, String? subfieldId}) async {
     journalsState = LoadState.loading;
     notifyListeners();
     
     try {
       final limit = RemoteConfigService.maxJournalsDisplayed;
-      topJournals = await _service.getTopJournals(
-        _currentTopic, 
-        limit: limit,
-        domainId: domainId,
-        fieldId: fieldId,
-        subfieldId: subfieldId,
-      );
+      if (query != null && query.isNotEmpty) {
+        topJournals = await _service.searchJournalsByName(
+          query, 
+          limit: limit,
+          domainId: domainId,
+          fieldId: fieldId,
+          subfieldId: subfieldId,
+        );
+      } else {
+        topJournals = await _service.getTopJournals(
+          _currentTopic, 
+          limit: limit,
+          domainId: domainId,
+          fieldId: fieldId,
+          subfieldId: subfieldId,
+        );
+      }
       journalsState = LoadState.success;
     } catch(e) {
       _setError(e.toString());
