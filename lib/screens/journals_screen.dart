@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/search_provider.dart';
@@ -18,6 +19,13 @@ class _JournalsScreenState extends State<JournalsScreen> {
   String? _selectedField;
   String? _selectedSubfield;
   String _sortOption = 'publication_desc';
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -32,7 +40,6 @@ class _JournalsScreenState extends State<JournalsScreen> {
   }
 
   void _showFilterSortDialog(BuildContext context) {
-    final provider = context.read<SearchProvider>();
     String? tempDomain = _selectedDomain;
     String? tempField = _selectedField;
     String? tempSubfield = _selectedSubfield;
@@ -43,8 +50,24 @@ class _JournalsScreenState extends State<JournalsScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text('Filter & Sort'),
+            return Consumer<SearchProvider>(
+              builder: (context, provider, _) {
+                // Prevent dropdown assertion errors when data changes
+                if (tempDomain != null && provider.fieldsByDomain[tempDomain] != null) {
+                  final validFields = provider.fieldsByDomain[tempDomain]!.map((e) => e.id).toSet();
+                  if (tempField != null && !validFields.contains(tempField)) {
+                    tempField = null;
+                  }
+                }
+                if (tempField != null && provider.subfieldsByField[tempField] != null) {
+                  final validSub = provider.subfieldsByField[tempField]!.map((e) => e.id).toSet();
+                  if (tempSubfield != null && !validSub.contains(tempSubfield)) {
+                    tempSubfield = null;
+                  }
+                }
+
+                return AlertDialog(
+                  title: Text('Filter & Sort'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -188,6 +211,7 @@ class _JournalsScreenState extends State<JournalsScreen> {
                       _sortOption = tempSort;
                     });
                     provider.applyJournalFilter(
+                      query: _searchQuery,
                       domainId: tempDomain,
                       fieldId: tempField,
                       subfieldId: tempSubfield,
@@ -197,6 +221,8 @@ class _JournalsScreenState extends State<JournalsScreen> {
                   child: Text('Apply'),
                 ),
               ],
+            );
+              },
             );
           },
         );
@@ -210,8 +236,77 @@ class _JournalsScreenState extends State<JournalsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: Text('Journal Analysis')),
-      body: Builder(
-        builder: (context) {
+      body: Column(
+        children: [
+          // Search and Filter Toolbar
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search journals...',
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                      });
+                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 600), () {
+                        context.read<SearchProvider>().applyJournalFilter(
+                          query: val.trim(),
+                          domainId: _selectedDomain,
+                          fieldId: _selectedField,
+                          subfieldId: _selectedSubfield,
+                        );
+                      });
+                    },
+                    onSubmitted: (val) {
+                      context.read<SearchProvider>().applyJournalFilter(
+                        query: val.trim(),
+                        domainId: _selectedDomain,
+                        fieldId: _selectedField,
+                        subfieldId: _selectedSubfield,
+                      );
+                    },
+                    textInputAction: TextInputAction.search,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.filter_list, color: Theme.of(context).colorScheme.primary),
+                    tooltip: 'Filter & Sort',
+                    onPressed: () => _showFilterSortDialog(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Builder(
+              builder: (context) {
           if (provider.journalsState == LoadState.loading) {
             return Center(
               child: Column(
@@ -254,14 +349,7 @@ class _JournalsScreenState extends State<JournalsScreen> {
           }
 
           // Apply filtering and sorting
-          List<JournalStat> filteredJournals = provider.topJournals.where((j) {
-            final matchesSearch = j.displayName.toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            );
-            // Note: Since JournalStat doesn't contain Domain/Field/Subfield from OpenAlex yet,
-            // we skip actual filtering by Domain/Field here, just UI placeholder.
-            return matchesSearch;
-          }).toList();
+          List<JournalStat> filteredJournals = List.from(provider.topJournals);
 
           if (_searchQuery.isNotEmpty) {
             final q = _searchQuery.toLowerCase();
@@ -317,64 +405,6 @@ class _JournalsScreenState extends State<JournalsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Search and Filter Toolbar
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: 'Search journals...',
-                            prefixIcon: Icon(
-                              Icons.search,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant
-                                  .withOpacity(0.5),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: Theme.of(context).dividerColor,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: Theme.of(context).dividerColor,
-                              ),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(
-                              vertical: 0,
-                              horizontal: 16,
-                            ),
-                          ),
-                          onChanged: (val) {
-                            setState(() {
-                              _searchQuery = val;
-                            });
-                          },
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Theme.of(context).dividerColor),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.filter_list,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          tooltip: 'Filter & Sort',
-                          onPressed: () => _showFilterSortDialog(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-
                   // KPI cards
                   IntrinsicHeight(
                     child: Row(
@@ -621,6 +651,9 @@ class _JournalsScreenState extends State<JournalsScreen> {
             ),
           );
         },
+      ),
+      ),
+        ],
       ),
     );
   }
