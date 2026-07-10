@@ -66,6 +66,10 @@ class SearchProvider extends ChangeNotifier {
   List<String> suggestions = [];
   Timer? _debounce;
 
+  // ── Keyword search autocomplete ───────────────
+  List<KeywordStat> keywordSuggestions = [];
+  Timer? _keywordDebounce;
+
   // ── Search history ────────────────────────────
   List<String> searchHistory = [];
 
@@ -137,6 +141,12 @@ class SearchProvider extends ChangeNotifier {
   // ── 4.2 Detail ────────────────────────────────
   LoadState detailState = LoadState.idle;
   Work? selectedWork;
+
+  // Keyword works pagination and sorting
+  int keywordWorksPage = 1;
+  String keywordWorksSort = 'publication_year:desc';
+  bool hasMoreKeywordWorks = true;
+  bool isKeywordWorksLoadingMore = false;
 
   // ─────────────────────────────────────────────
   // PUBLIC METHODS
@@ -292,6 +302,118 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Debounced keyword/concept autocomplete — call from keyword search bar.
+  void fetchKeywordSuggestions(String query) {
+    _keywordDebounce?.cancel();
+    if (query.trim().length < 2) {
+      keywordSuggestions = [];
+      notifyListeners();
+      return;
+    }
+    _keywordDebounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        keywordSuggestions = await _service.autocompleteConcepts(query);
+        notifyListeners();
+      } catch (_) {
+        keywordSuggestions = [];
+        notifyListeners();
+      }
+    });
+  }
+
+  void clearKeywordSuggestions() {
+    _keywordDebounce?.cancel();
+    keywordSuggestions = [];
+    notifyListeners();
+  }
+
+  /// Search for a keyword by selecting a concept and loading related works & authors.
+  Future<void> searchKeyword(KeywordStat keyword) async {
+    selectedKeyword = keyword;
+    keywordWorks = [];
+    keywordAuthors = [];
+    keywordJournals = [];
+    keywordTrend = [];
+    keywordDetailState = LoadState.loading;
+    keywordSuggestions = [];
+    notifyListeners();
+
+    if (keyword.conceptId == null) {
+      keywordDetailState = LoadState.error;
+      _setError('No concept ID available for this keyword.');
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final conceptId = keyword.conceptId!;
+      final results = await Future.wait([
+        _service.getWorksWithConcept(conceptId, limit: 10),
+        _service.getAuthorsForConcept(conceptId, limit: 10),
+        _service.getJournalsForConcept(conceptId, limit: 10),
+        _service.getKeywordTrend(conceptId),
+      ]);
+
+      keywordWorks = results[0] as List<Work>;
+      keywordAuthors = results[1] as List<AuthorStat>;
+      keywordJournals = results[2] as List<JournalStat>;
+      keywordTrend = results[3] as List<YearlyCount>;
+      keywordDetailState = LoadState.success;
+    } catch (e) {
+      keywordDetailState = LoadState.error;
+      _setError(e.toString());
+    }
+    notifyListeners();
+  }
+
+  /// Search for a keyword by text query (when user submits without selecting autocomplete).
+  /// Finds matching concepts and loads results for the best match.
+  Future<void> searchKeywordByText(String query) async {
+    if (query.trim().isEmpty) return;
+
+    keywordWorks = [];
+    keywordAuthors = [];
+    keywordJournals = [];
+    keywordTrend = [];
+    keywordDetailState = LoadState.loading;
+    keywordSuggestions = [];
+    notifyListeners();
+
+    try {
+      final concepts = await _service.searchConcepts(query, limit: 1);
+      if (concepts.isEmpty) {
+        keywordDetailState = LoadState.error;
+        _setError('No concepts found matching "$query".');
+        notifyListeners();
+        return;
+      }
+
+      final bestMatch = concepts.first;
+      selectedKeyword = bestMatch;
+
+      final conceptId = bestMatch.conceptId!;
+      keywordWorksPage = 1;
+      keywordWorksSort = 'publication_year:desc';
+      hasMoreKeywordWorks = true;
+      final results = await Future.wait([
+        _service.getWorksWithConcept(conceptId, limit: 10, page: keywordWorksPage, sort: keywordWorksSort),
+        _service.getAuthorsForConcept(conceptId, limit: 10),
+        _service.getJournalsForConcept(conceptId, limit: 10),
+        _service.getKeywordTrend(conceptId),
+      ]);
+
+      keywordWorks = results[0] as List<Work>;
+      keywordAuthors = results[1] as List<AuthorStat>;
+      keywordJournals = results[2] as List<JournalStat>;
+      keywordTrend = results[3] as List<YearlyCount>;
+      keywordDetailState = LoadState.success;
+    } catch (e) {
+      keywordDetailState = LoadState.error;
+      _setError(e.toString());
+    }
+    notifyListeners();
+  }
+
   Future<void> loadHistory() async {
     searchHistory = await _historyService.getAll();
     notifyListeners();
@@ -336,6 +458,10 @@ class SearchProvider extends ChangeNotifier {
     keywordAuthors = [];
     keywordJournals = [];
     keywordWorks = [];
+    keywordWorksPage = 1;
+    keywordWorksSort = 'publication_year:desc';
+    hasMoreKeywordWorks = true;
+    isKeywordWorksLoadingMore = false;
     journalWorksState = LoadState.idle;
     journalWorks = [];
     authorsState = LoadState.idle;
@@ -663,8 +789,10 @@ class SearchProvider extends ChangeNotifier {
       await AnalyticsService.logViewKeyword(keyword.displayName);
 
       final conceptId = keyword.conceptId!;
+      keywordWorksPage = 1;
+      hasMoreKeywordWorks = true;
       final trend = await _service.getKeywordTrend(conceptId);
-      final works = await _service.getWorksWithConcept(conceptId, limit: 5);
+      final works = await _service.getWorksWithConcept(conceptId, limit: 10, page: keywordWorksPage, sort: keywordWorksSort);
       final authors = await _service.getAuthorsForConcept(conceptId, limit: 10);
       final journals = await _service.getJournalsForConcept(conceptId, limit: 10);
 
@@ -680,9 +808,49 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loadMoreKeywordWorks() async {
+    if (selectedKeyword == null || !hasMoreKeywordWorks || isKeywordWorksLoadingMore) return;
+    isKeywordWorksLoadingMore = true;
+    notifyListeners();
+
+    try {
+      keywordWorksPage++;
+      final works = await _service.getWorksWithConcept(selectedKeyword!.conceptId!, limit: 10, page: keywordWorksPage, sort: keywordWorksSort);
+      if (works.isEmpty) {
+        hasMoreKeywordWorks = false;
+      } else {
+        keywordWorks.addAll(works);
+      }
+    } catch (e) {
+      // Ignore pagination errors
+    } finally {
+      isKeywordWorksLoadingMore = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> changeKeywordWorksSort(String sort) async {
+    if (selectedKeyword == null || keywordWorksSort == sort) return;
+    keywordWorksSort = sort;
+    keywordWorksPage = 1;
+    hasMoreKeywordWorks = true;
+    keywordDetailState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      keywordWorks = await _service.getWorksWithConcept(selectedKeyword!.conceptId!, limit: 10, page: keywordWorksPage, sort: keywordWorksSort);
+      keywordDetailState = LoadState.success;
+    } catch (e) {
+      keywordDetailState = LoadState.error;
+      _setError(e.toString());
+    }
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
+    _keywordDebounce?.cancel();
     _service.dispose();
     super.dispose();
   }

@@ -186,6 +186,51 @@ class OpenAlexService {
         .toList();
   }
 
+  /// Returns up to 10 concept/keyword suggestions for autocomplete.
+  /// Each result includes the concept ID and display name.
+  Future<List<KeywordStat>> autocompleteConcepts(String query) async {
+    if (query.trim().isEmpty) return [];
+    final data = await _get('/autocomplete/concepts', {'q': query});
+    final results = data['results'] as List? ?? [];
+    return results
+        .where((r) => r['display_name'] != null && r['display_name'].toString().isNotEmpty)
+        .map((r) {
+          final rawId = r['id']?.toString() ?? '';
+          final conceptId = rawId.replaceFirst('https://openalex.org/', '');
+          return KeywordStat(
+            conceptId: conceptId,
+            displayName: r['display_name'].toString(),
+            paperCount: _asInt(r['works_count']),
+          );
+        })
+        .toList();
+  }
+
+  /// Search concepts by text query — returns matching concepts.
+  /// Used when user submits text without selecting autocomplete suggestion.
+  Future<List<KeywordStat>> searchConcepts(String query, {int limit = 10}) async {
+    if (query.trim().isEmpty) return [];
+    final data = await _get('/concepts', {
+      'search': query,
+      'per_page': limit.toString(),
+      'select': 'id,display_name,works_count',
+    });
+    final results = data['results'] as List? ?? [];
+    return results
+        .where((r) => r['display_name'] != null)
+        .map((r) {
+          final rawId = r['id']?.toString() ?? '';
+          final conceptId = rawId.replaceFirst('https://openalex.org/', '');
+          return KeywordStat(
+            conceptId: conceptId,
+            displayName: r['display_name'].toString(),
+            paperCount: _asInt(r['works_count']),
+          );
+        })
+        .take(limit)
+        .toList();
+  }
+
   // ─────────────────────────────────────────────
   // 4.2  PUBLICATION DETAIL
   // ─────────────────────────────────────────────
@@ -388,16 +433,14 @@ class OpenAlexService {
     String? fieldId,
     String? subfieldId,
   }) async {
-    // FAST PATH: If no topic is provided, use /sources directly instead of grouping all works in OpenAlex
-    if (topic.isEmpty) {
+    // FAST PATH: If no topic and no filters are provided, use /sources directly.
+    // We cannot use /sources if domain/field filters are provided because /sources does not support topic.domain.id filtering.
+    if (topic.isEmpty &&
+        (domainId == null || domainId.isEmpty) &&
+        (fieldId == null || fieldId.isEmpty) &&
+        (subfieldId == null || subfieldId.isEmpty)) {
       final filters = <String>['type:journal'];
-      if (subfieldId != null && subfieldId.isNotEmpty) {
-        filters.add('topic.subfield.id:$subfieldId');
-      } else if (fieldId != null && fieldId.isNotEmpty) {
-        filters.add('topic.field.id:$fieldId');
-      } else if (domainId != null && domainId.isNotEmpty) {
-        filters.add('topic.domain.id:$domainId');
-      }
+
 
       final params = <String, String>{
         'filter': filters.join(','),
@@ -433,8 +476,10 @@ class OpenAlexService {
     final params = <String, String>{
       'group_by': 'primary_location.source.id',
       'per_page': limit.toString(),
-      'search': topic,
     };
+    if (topic.isNotEmpty) {
+      params['search'] = topic;
+    }
     
     if (filters.isNotEmpty) {
       params['filter'] = filters.join(',');
@@ -685,12 +730,18 @@ class OpenAlexService {
   }
 
   /// Fetch related publications for a concept.
-  Future<List<Work>> getWorksWithConcept(String conceptId, {int limit = 5}) async {
+  Future<List<Work>> getWorksWithConcept(
+    String conceptId, {
+    int limit = 10,
+    int page = 1,
+    String sort = 'publication_year:desc',
+  }) async {
     final id = conceptId.replaceFirst('https://openalex.org/', '');
     final data = await _get('/works', {
       'filter': 'concepts.id:$id',
-      'sort': 'cited_by_count:desc',
+      'sort': sort,
       'per_page': limit.toString(),
+      'page': page.toString(),
       'select': 'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
     });
     return (data['results'] as List? ?? [])
