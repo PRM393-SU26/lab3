@@ -388,16 +388,13 @@ class OpenAlexService {
     String? fieldId,
     String? subfieldId,
   }) async {
-    // FAST PATH: If no topic is provided, use /sources directly instead of grouping all works in OpenAlex
-    if (topic.isEmpty) {
+    final hasTaxonomyFilter = (domainId != null && domainId.isNotEmpty) ||
+                              (fieldId != null && fieldId.isNotEmpty) ||
+                              (subfieldId != null && subfieldId.isNotEmpty);
+
+    // FAST PATH: If no topic is provided AND no taxonomy filter, use /sources directly
+    if (topic.isEmpty && !hasTaxonomyFilter) {
       final filters = <String>['type:journal'];
-      if (subfieldId != null && subfieldId.isNotEmpty) {
-        filters.add('topic.subfield.id:$subfieldId');
-      } else if (fieldId != null && fieldId.isNotEmpty) {
-        filters.add('topic.field.id:$fieldId');
-      } else if (domainId != null && domainId.isNotEmpty) {
-        filters.add('topic.domain.id:$domainId');
-      }
 
       final params = <String, String>{
         'filter': filters.join(','),
@@ -420,7 +417,7 @@ class OpenAlexService {
       }).toList();
     }
 
-    // SLOW PATH: Find top journals for a specific topic using group_by
+    // SLOW PATH: Find top journals for a specific topic or taxonomy using group_by on /works
     final filters = <String>[];
     if (subfieldId != null && subfieldId.isNotEmpty) {
       filters.add('primary_topic.subfield.id:$subfieldId');
@@ -433,8 +430,10 @@ class OpenAlexService {
     final params = <String, String>{
       'group_by': 'primary_location.source.id',
       'per_page': limit.toString(),
-      'search': topic,
     };
+    if (topic.isNotEmpty) {
+      params['search'] = topic;
+    }
     
     if (filters.isNotEmpty) {
       params['filter'] = filters.join(',');

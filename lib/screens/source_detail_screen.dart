@@ -118,11 +118,14 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
             return const Center(child: Text('No journal data found'));
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+          return DefaultTabController(
+            length: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: 
                 // ── Header card ───────────────────────────────────
                 Container(
                   width: double.infinity,
@@ -221,10 +224,29 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // ── Stats grid ────────────────────────────────────
-                const _SectionTitle(title: 'Journal Metrics'),
+                ),
+                const TabBar(
+                  labelColor: _indigo,
+                  unselectedLabelColor: _slate600,
+                  indicatorColor: _indigo,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: _slate200,
+                  tabs: [
+                    Tab(text: 'Publications'),
+                    Tab(text: 'Profile'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      // Tab 1: Publications
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── Stats grid ────────────────────────────────────
+                            const _SectionTitle(title: 'Journal Metrics'),
                 const SizedBox(height: 10),
                 GridView.count(
                   crossAxisCount: 2,
@@ -280,147 +302,160 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-
-                // ── Access info ───────────────────────────────────
-                const _SectionTitle(title: 'Access & Profile'),
-                const SizedBox(height: 10),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: _slate200),
-                  ),
-                  child: Column(
-                    children: [
-                      _InfoRow(
-                        icon: Icons.fingerprint_rounded,
-                        label: 'OpenAlex ID',
-                        value: source.id.replaceFirst('https://openalex.org/', ''),
-                      ),
-                      if (source.type != null) ...[
-                        const Divider(height: 20, color: _slate100),
-                        _InfoRow(
-                          icon: Icons.category_rounded,
-                          label: 'Type',
-                          value: _formatType(source.type!),
+                            const SizedBox(height: 24),
+                            const _SectionTitle(title: 'Related Publications'),
+                            const SizedBox(height: 10),
+                            Builder(
+                              builder: (context) {
+                                if (provider.journalWorksState == LoadState.loading) {
+                                  return const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(20.0),
+                                      child: CircularProgressIndicator(color: _indigo),
+                                    ),
+                                  );
+                                }
+                                if (provider.journalWorksState == LoadState.error) {
+                                  return Card(
+                                    elevation: 0,
+                                    color: Colors.red.shade50,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Text(
+                                        'Failed to load related publications.',
+                                        style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                if (provider.journalWorks.isEmpty) {
+                                  return const Card(
+                                    elevation: 0,
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16.0),
+                                      child: Text('No related publications found.', style: TextStyle(color: _slate600, fontSize: 13)),
+                                    ),
+                                  );
+                                }
+                                return ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: provider.journalWorks.length,
+                                  itemBuilder: (context, index) {
+                                    final work = provider.journalWorks[index];
+                                    return Card(
+                                      elevation: 1,
+                                      margin: const EdgeInsets.only(bottom: 10),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: const BorderSide(color: _slate200),
+                                      ),
+                                      child: ListTile(
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        title: Text(
+                                          work.title,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _slate900),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        subtitle: Padding(
+                                          padding: const EdgeInsets.only(top: 6),
+                                          child: Text(
+                                            'Year: ${work.publicationYear ?? "N/A"}  ·  Citations: ${work.citedByCount}',
+                                            style: const TextStyle(fontSize: 11, color: _slate600),
+                                          ),
+                                        ),
+                                        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: _slate400),
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => DetailScreen(workId: work.id),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 32),
+                          ],
                         ),
-                      ],
-                      const Divider(height: 20, color: _slate100),
-                      _InfoRow(
-                        icon: Icons.lock_open_rounded,
-                        label: 'Open Access',
-                        value: source.isOa ? 'Yes' : 'No',
-                        valueColor: source.isOa ? _emerald : null,
                       ),
-                      const Divider(height: 20, color: _slate100),
-                      _InfoRow(
-                        icon: Icons.verified_outlined,
-                        label: 'DOAJ Listed',
-                        value: source.isInDoaj ? 'Yes' : 'No',
-                        valueColor: source.isInDoaj ? _amber : null,
+                      // Tab 2: Profile
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── Access info ───────────────────────────────────
+                            const _SectionTitle(title: 'Access & Profile'),
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: _slate200),
+                              ),
+                              child: Column(
+                                children: [
+                                  _InfoRow(
+                                    icon: Icons.fingerprint_rounded,
+                                    label: 'OpenAlex ID',
+                                    value: source.id.replaceFirst('https://openalex.org/', ''),
+                                  ),
+                                  if (source.type != null) ...[
+                                    const Divider(height: 20, color: _slate100),
+                                    _InfoRow(
+                                      icon: Icons.category_rounded,
+                                      label: 'Type',
+                                      value: _formatType(source.type!),
+                                    ),
+                                  ],
+                                  const Divider(height: 20, color: _slate100),
+                                  _InfoRow(
+                                    icon: Icons.lock_open_rounded,
+                                    label: 'Open Access',
+                                    value: source.isOa ? 'Yes' : 'No',
+                                    valueColor: source.isOa ? _emerald : null,
+                                  ),
+                                  const Divider(height: 20, color: _slate100),
+                                  _InfoRow(
+                                    icon: Icons.verified_outlined,
+                                    label: 'DOAJ Listed',
+                                    value: source.isInDoaj ? 'Yes' : 'No',
+                                    valueColor: source.isInDoaj ? _amber : null,
+                                  ),
+                                  if (source.countryCode != null) ...[
+                                    const Divider(height: 20, color: _slate100),
+                                    _InfoRow(
+                                      icon: Icons.public_rounded,
+                                      label: 'Country',
+                                      value: source.countryCode!,
+                                    ),
+                                  ],
+                                  if (source.homepageUrl != null) ...[
+                                    const Divider(height: 20, color: _slate100),
+                                    _InfoRow(
+                                      icon: Icons.link_rounded,
+                                      label: 'Homepage',
+                                      value: source.homepageUrl!,
+                                      valueColor: _indigo,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      if (source.countryCode != null) ...[
-                        const Divider(height: 20, color: _slate100),
-                        _InfoRow(
-                          icon: Icons.public_rounded,
-                          label: 'Country',
-                          value: source.countryCode!,
-                        ),
-                      ],
-                      if (source.homepageUrl != null) ...[
-                        const Divider(height: 20, color: _slate100),
-                        _InfoRow(
-                          icon: Icons.link_rounded,
-                          label: 'Homepage',
-                          value: source.homepageUrl!,
-                          valueColor: _indigo,
-                        ),
-                      ],
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                const _SectionTitle(title: 'Related Publications'),
-                const SizedBox(height: 10),
-                Builder(
-                  builder: (context) {
-                    if (provider.journalWorksState == LoadState.loading) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20.0),
-                          child: CircularProgressIndicator(color: _indigo),
-                        ),
-                      );
-                    }
-                    if (provider.journalWorksState == LoadState.error) {
-                      return Card(
-                        elevation: 0,
-                        color: Colors.red.shade50,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            'Failed to load related publications.',
-                            style: TextStyle(color: Colors.red.shade800, fontSize: 13),
-                          ),
-                        ),
-                      );
-                    }
-                    if (provider.journalWorks.isEmpty) {
-                      return const Card(
-                        elevation: 0,
-                        child: Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text('No related publications found.', style: TextStyle(color: _slate600, fontSize: 13)),
-                        ),
-                      );
-                    }
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: provider.journalWorks.length,
-                      itemBuilder: (context, index) {
-                        final work = provider.journalWorks[index];
-                        return Card(
-                          elevation: 1,
-                          margin: const EdgeInsets.only(bottom: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: _slate200),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            title: Text(
-                              work.title,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _slate900),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                'Year: ${work.publicationYear ?? "N/A"}  ·  Citations: ${work.citedByCount}',
-                                style: const TextStyle(fontSize: 11, color: _slate600),
-                              ),
-                            ),
-                            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: _slate400),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => DetailScreen(workId: work.id),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 32),
               ],
             ),
           );
