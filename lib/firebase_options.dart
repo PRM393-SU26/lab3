@@ -41,50 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDinVMcxUmpUOZwQp9qlHrTT91_xyUySoA',
-    appId: '1:849075968130:web:cb69dea0cf038c055fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    authDomain: 'prm-lab-a2526.firebaseapp.com',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
-    measurementId: 'G-2RS1TQ97MD',
+    apiKey: 'AIzaSyCudaDmI2drHslkMoapz63ETkwdH_STuKk',
+    appId: '1:62411371672:web:591344e093f86cdc074ced',
+    messagingSenderId: '62411371672',
+    projectId: 'prm393-3447c',
+    authDomain: 'prm393-3447c.firebaseapp.com',
+    storageBucket: 'prm393-3447c.firebasestorage.app',
+    measurementId: 'G-J7DYRB9ZH5',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAaHneR2Lo8kpKwt1TBsKK_ENJnv3zTurg',
-    appId: '1:849075968130:android:c7947f4432602cb05fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
+    apiKey: 'AIzaSyAcMjnUwwVzg073nyiMfLYpBU-qkdeMLBU',
+    appId: '1:62411371672:android:9c9f880ae7b1d24d074ced',
+    messagingSenderId: '62411371672',
+    projectId: 'prm393-3447c',
+    storageBucket: 'prm393-3447c.firebasestorage.app',
   );
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCpKnTH-TYQK36jedKXyDNUIDznO0_vcCY',
-    appId: '1:849075968130:ios:232493f67917df185fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
-    androidClientId: '849075968130-l332ee4lcqr6t4ukpqc17cemb6nc6v22.apps.googleusercontent.com',
-    iosClientId: '849075968130-s0o4q1vogtmceuq4ndom43mln9enji31.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDTk6YHZig4NrOW2tOaULNLXMBG6r7-x7E',
+    appId: '1:62411371672:ios:27da9c6984dca167074ced',
+    messagingSenderId: '62411371672',
+    projectId: 'prm393-3447c',
+    storageBucket: 'prm393-3447c.firebasestorage.app',
     iosBundleId: 'com.example.journalTrend',
   );
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCpKnTH-TYQK36jedKXyDNUIDznO0_vcCY',
-    appId: '1:849075968130:ios:232493f67917df185fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
-    androidClientId: '849075968130-l332ee4lcqr6t4ukpqc17cemb6nc6v22.apps.googleusercontent.com',
-    iosClientId: '849075968130-s0o4q1vogtmceuq4ndom43mln9enji31.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDTk6YHZig4NrOW2tOaULNLXMBG6r7-x7E',
+    appId: '1:62411371672:ios:27da9c6984dca167074ced',
+    messagingSenderId: '62411371672',
+    projectId: 'prm393-3447c',
+    storageBucket: 'prm393-3447c.firebasestorage.app',
     iosBundleId: 'com.example.journalTrend',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDinVMcxUmpUOZwQp9qlHrTT91_xyUySoA',
-    appId: '1:849075968130:web:791054ea4a4eb1905fbc9b',
-    messagingSenderId: '849075968130',
-    projectId: 'prm-lab-a2526',
-    authDomain: 'prm-lab-a2526.firebaseapp.com',
-    storageBucket: 'prm-lab-a2526.firebasestorage.app',
-    measurementId: 'G-9M7D3X41E7',
+    apiKey: 'AIzaSyCudaDmI2drHslkMoapz63ETkwdH_STuKk',
+    appId: '1:62411371672:web:b2f0d35c42a36ab5074ced',
+    messagingSenderId: '62411371672',
+    projectId: 'prm393-3447c',
+    authDomain: 'prm393-3447c.firebaseapp.com',
+    storageBucket: 'prm393-3447c.firebasestorage.app',
+    measurementId: 'G-M15ZZMVNY1',
   );
 }
