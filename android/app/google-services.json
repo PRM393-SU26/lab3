@@ -1,59 +1,26 @@
 {
   "project_info": {
-    "project_number": "865302042692",
-    "project_id": "journal-trend-86de9",
-    "storage_bucket": "journal-trend-86de9.firebasestorage.app"
+    "project_number": "62411371672",
+    "project_id": "prm393-3447c",
+    "storage_bucket": "prm393-3447c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:865302042692:android:7dc44d69c05c7733380411",
+        "mobilesdk_app_id": "1:62411371672:android:9c9f880ae7b1d24d074ced",
         "android_client_info": {
           "package_name": "com.example.journal_trend"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "865302042692-rmkf43qek40c9dalme8j9cb54upq2utl.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.journal_trend",
-            "certificate_hash": "275797a6a1ec070f02361703042050f2f0615c69"
-          }
-        },
-        {
-          "client_id": "865302042692-tjf389of5isrl514p96roo9l0n8iutq3.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.journal_trend",
-            "certificate_hash": "ad3b62843d916fcc5dce28bd178d11a70acb6722"
-          }
-        },
-        {
-          "client_id": "865302042692-57tmuguuht7o3q5ohir6ge0boa5tm5jn.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDhKP8MsXlVlMP_RiatXiDi-ham15nm7s4"
+          "current_key": "AIzaSyAcMjnUwwVzg073nyiMfLYpBU-qkdeMLBU"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "865302042692-57tmuguuht7o3q5ohir6ge0boa5tm5jn.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "865302042692-6pa2rffabcdjnf3mrjkugh54epknsob0.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.journalTrend"
-              }
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

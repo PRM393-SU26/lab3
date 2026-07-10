@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -24,14 +23,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isUploading = false;
   String? _uploadUrl;
   String? _uploadError;
-
-  static const _indigo      = Color(0xFF4F46E5);
-  static const _indigoLight = Color(0xFFEEF2FF);
-  static const _slate50    = Color(0xFFF8FAFC);
-  static const _slate200    = Color(0xFFE2E8F0);
-  static const _slate600    = Color(0xFF475569);
-  static const _slate900    = Color(0xFF0F172A);
-
   Future<void> _handleSignOut() async {
     await AnalyticsService.logLogout();
     if (mounted) {
@@ -63,10 +54,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await AnalyticsService.logExportPdf(db.topic);
 
       // 2. Generate PDF bytes
-      final pdfBytes = await DashboardExportService.generatePdf(db, provider.oaBreakdown);
+      final pdfBytes = await DashboardExportService.generatePdf(
+        db,
+        provider.oaBreakdown,
+      );
 
       // 3. Upload to Firebase Storage
-      final url = await DashboardExportService.uploadReportToFirebase(pdfBytes, db.topic);
+      final url = await DashboardExportService.uploadReportToFirebase(
+        pdfBytes,
+        db.topic,
+      );
 
       setState(() {
         _uploadUrl = url;
@@ -90,172 +87,217 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+final user = FirebaseAuth.instance.currentUser;
     final provider = context.watch<SearchProvider>();
 
     return Scaffold(
-      backgroundColor: _slate50,
-      appBar: AppBar(
-        title: const Text('Profile & Settings'),
-        backgroundColor: _indigo,
-        foregroundColor: Colors.white,
-      ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(title: Text('Profile & Settings')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Column(
           children: [
             // ── USER PROFILE CARD ──────────────────────────────
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _slate200),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Column(
                 children: [
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor: _indigoLight,
-                    backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    backgroundImage: user?.photoURL != null
+                        ? NetworkImage(user!.photoURL!)
+                        : null,
                     child: user?.photoURL == null
-                        ? const Icon(Icons.person, size: 36, color: _indigo)
+                        ? Icon(
+                            Icons.person,
+                            size: 36,
+                            color: Theme.of(context).colorScheme.primary,
+                          )
                         : null,
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Text(
                     user?.displayName ?? 'Developer Account',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: _slate900,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     user?.email ?? 'No email associated',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: _slate600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: _handleSignOut,
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Sign Out'),
+                    icon: Icon(Icons.logout),
+                    label: Text('Sign Out'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red.shade50,
                       foregroundColor: Colors.red.shade700,
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // ── REMOTE CONFIG DISPLAY ──────────────────────────
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _slate200),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.settings_suggest, color: _indigo),
+                      Icon(
+                        Icons.settings_suggest,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'Remote Configurations',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _slate900),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Max Journals Displayed', style: TextStyle(fontSize: 13, color: _slate600)),
+                      Text(
+                        'Max Journals Displayed',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                       Text(
                         '${RemoteConfigService.maxJournalsDisplayed}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: _indigo),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ],
                   ),
-                  const Divider(height: 16),
+                  Divider(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Max Keywords Displayed', style: TextStyle(fontSize: 13, color: _slate600)),
+                      Text(
+                        'Max Keywords Displayed',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                       Text(
                         '${RemoteConfigService.maxKeywordsDisplayed}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: _indigo),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // ── REPORT EXPORT & STORAGE UPLOAD ─────────────────
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _slate200),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.cloud_upload_outlined, color: _indigo),
+                      Icon(
+                        Icons.cloud_upload_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'Export Analytics to Cloud',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _slate900),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  if (provider.currentTopic.isEmpty || provider.dashboard == null)
-                    const Text(
+                  SizedBox(height: 12),
+                  if (provider.currentTopic.isEmpty ||
+                      provider.dashboard == null)
+                    Text(
                       'Please perform a search first on the Home screen to enable exporting data.',
-                      style: TextStyle(color: _slate600, fontSize: 13),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
                     )
                   else ...[
                     Text(
                       'Generate a PDF report for topic "${provider.currentTopic}" and save it directly to Firebase Cloud Storage.',
-                      style: const TextStyle(color: _slate600, fontSize: 13),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     if (_isUploading)
-                      const Center(
-                        child: CircularProgressIndicator(color: _indigo),
+                      Center(
+                        child: CircularProgressIndicator(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       )
                     else
                       ElevatedButton.icon(
                         onPressed: () => _exportAndUploadReport(provider),
-                        icon: const Icon(Icons.picture_as_pdf),
-                        label: const Text('Export & Upload PDF'),
+                        icon: Icon(Icons.picture_as_pdf),
+                        label: Text('Export & Upload PDF'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _indigo,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     if (_uploadUrl != null) ...[
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Colors.green.shade50,
                           borderRadius: BorderRadius.circular(12),
@@ -264,39 +306,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Text(
+                            Text(
                               'Successfully Uploaded to Storage:',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.green),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: Colors.green,
+                              ),
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             SelectableText(
                               _uploadUrl!,
-                              style: TextStyle(fontSize: 11, color: Colors.green.shade900),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.green.shade900,
+                              ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 TextButton.icon(
                                   onPressed: () {
-                                    Clipboard.setData(ClipboardData(text: _uploadUrl!));
+                                    Clipboard.setData(
+                                      ClipboardData(text: _uploadUrl!),
+                                    );
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Link copied to clipboard')),
+                                      SnackBar(
+                                        content: Text(
+                                          'Link copied to clipboard',
+                                        ),
+                                      ),
                                     );
                                   },
-                                  icon: const Icon(Icons.copy, size: 14),
-                                  label: const Text('Copy', style: TextStyle(fontSize: 12)),
+                                  icon: Icon(Icons.copy, size: 14),
+                                  label: Text(
+                                    'Copy',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 TextButton.icon(
                                   onPressed: () async {
                                     final uri = Uri.parse(_uploadUrl!);
                                     if (await canLaunchUrl(uri)) {
-                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                      await launchUrl(
+                                        uri,
+                                        mode: LaunchMode.externalApplication,
+                                      );
                                     }
                                   },
-                                  icon: const Icon(Icons.open_in_new, size: 14),
-                                  label: const Text('Open', style: TextStyle(fontSize: 12)),
+                                  icon: Icon(Icons.open_in_new, size: 14),
+                                  label: Text(
+                                    'Open',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
                                 ),
                               ],
                             ),
@@ -305,63 +369,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                     if (_uploadError != null) ...[
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Text(
                         _uploadError!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                        style: TextStyle(color: Colors.red, fontSize: 12),
                       ),
                     ],
                   ],
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // ── CRASHLYTICS DEMO ───────────────────────────────
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _slate200),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(Icons.bug_report_outlined, color: Colors.red),
                       SizedBox(width: 8),
                       Text(
                         'Firebase Crashlytics Demo',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _slate900),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
                             try {
-                              throw Exception('Handled Exception: User triggered Exception in ProfileScreen');
+                              throw Exception(
+                                'Handled Exception: User triggered Exception in ProfileScreen',
+                              );
                             } catch (e, stack) {
-                              FirebaseCrashlytics.instance.recordError(e, stack);
+                              FirebaseCrashlytics.instance.recordError(
+                                e,
+                                stack,
+                              );
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Handled error recorded by Crashlytics')),
+                                SnackBar(
+                                  content: Text(
+                                    'Handled error recorded by Crashlytics',
+                                  ),
+                                ),
                               );
                             }
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            side: BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: const Text('Record Error'),
+                          child: Text('Record Error'),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
@@ -371,9 +450,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: const Text('Force Crash'),
+                          child: Text('Force Crash'),
                         ),
                       ),
                     ],
@@ -381,15 +462,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // ── FCM NOTIFICATION CENTER ────────────────────────
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _slate200),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -405,19 +486,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               return Badge(
                                 label: Text('$count'),
                                 isLabelVisible: count > 0,
-                                child: const Icon(Icons.notifications_active_outlined, color: _indigo),
+                                child: Icon(
+                                  Icons.notifications_active_outlined,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                               );
                             },
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
+                          SizedBox(width: 8),
+                          Text(
                             'Notification Center',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _slate900),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
                           ),
                         ],
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: _slate600, size: 20),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: 20,
+                        ),
                         tooltip: 'Clear All',
                         onPressed: () async {
                           await FcmService.clearNotifications();
@@ -426,52 +518,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: _triggerMockNotification,
-                    icon: const Icon(Icons.add_alert_rounded),
-                    label: const Text('Trigger Test Notification'),
+                    icon: Icon(Icons.add_alert_rounded),
+                    label: Text('Trigger Test Notification'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber.shade50,
                       foregroundColor: Colors.amber.shade900,
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   if (FcmService.notifications.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(vertical: 24.0),
                       child: Center(
                         child: Text(
                           'No notifications received yet.',
-                          style: TextStyle(color: _slate600, fontSize: 13),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     )
                   else
                     ListView.separated(
                       shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
+                      physics: NeverScrollableScrollPhysics(),
                       itemCount: FcmService.notifications.length,
-                      separatorBuilder: (_, __) => const Divider(height: 16),
+                      separatorBuilder: (_, _) => Divider(height: 16),
                       itemBuilder: (context, idx) {
                         final notif = FcmService.notifications[idx];
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(
                             notif.title,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _slate900),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(height: 4),
-                              Text(notif.body, style: const TextStyle(fontSize: 12, color: _slate600)),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
+                              Text(
+                                notif.body,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              SizedBox(height: 4),
                               Text(
                                 '${notif.receivedAt.hour.toString().padLeft(2, '0')}:${notif.receivedAt.minute.toString().padLeft(2, '0')} - ${notif.receivedAt.day}/${notif.receivedAt.month}',
-                                style: const TextStyle(fontSize: 9, color: Colors.grey),
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: Colors.grey,
+                                ),
                               ),
                             ],
                           ),
@@ -481,7 +591,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
           ],
         ),
       ),
