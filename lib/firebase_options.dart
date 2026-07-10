@@ -63,6 +63,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '62411371672',
     projectId: 'prm393-3447c',
     storageBucket: 'prm393-3447c.firebasestorage.app',
+    iosClientId: '62411371672-7hp0gjevaof1aq9cvfu3vbk3bqgq655a.apps.googleusercontent.com',
     iosBundleId: 'com.example.journalTrend',
   );
   static const FirebaseOptions macos = FirebaseOptions(
@@ -71,6 +72,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '62411371672',
     projectId: 'prm393-3447c',
     storageBucket: 'prm393-3447c.firebasestorage.app',
+    iosClientId: '62411371672-7hp0gjevaof1aq9cvfu3vbk3bqgq655a.apps.googleusercontent.com',
     iosBundleId: 'com.example.journalTrend',
   );
 

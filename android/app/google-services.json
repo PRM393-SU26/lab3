@@ -12,7 +12,20 @@
           "package_name": "com.example.journal_trend"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "62411371672-uf9h4v488a4as6hck2dnt8aotafpjjci.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.journal_trend",
+            "certificate_hash": "9ded5028dd671c28c9d041934965c0c4bf8c8d4e"
+          }
+        },
+        {
+          "client_id": "62411371672-eevfkcnkkta8a6sgskejblo0b0qdbku7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAcMjnUwwVzg073nyiMfLYpBU-qkdeMLBU"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "62411371672-2dhe9l1gljh7f06o46d7sngvu81pq7jm.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "62411371672-7hp0gjevaof1aq9cvfu3vbk3bqgq655a.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.journalTrend"
+              }
+            }
+          ]
         }
       }
     }
