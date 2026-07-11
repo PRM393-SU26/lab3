@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,7 @@ import 'package:journal_trend/services/remote_config_service.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:journal_trend/firebase_options.dart';
 
@@ -21,6 +23,22 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // ── Firebase Crashlytics setup ────────────────────────────────
+  // Without this, uncaught Flutter/Dart errors never reach Crashlytics —
+  // only errors manually passed to recordError() would show up, and
+  // FirebaseCrashlytics.instance.crash() would crash the app locally
+  // without necessarily being flagged for upload on next launch.
+  if (!kIsWeb) {
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+    // Ensure crash reports are actually collected/uploaded, including in
+    // debug builds (Crashlytics can otherwise default to disabled locally).
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+  }
   
   // Initialize Google Sign In exactly once at startup
   try {
@@ -102,4 +120,3 @@ class _JournalTrendAppState extends State<JournalTrendApp> {
     );
   }
 }
-

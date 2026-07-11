@@ -32,7 +32,6 @@ class _AuthorDetailScreenState extends State<AuthorDetailScreen> {
   static const _slate200    = Color(0xFFE2E8F0);
   static const _slate400    = Color(0xFF94A3B8);
   static const _slate600    = Color(0xFF475569);
-  static const _slate700    = Color(0xFF334155);
   static const _slate900    = Color(0xFF0F172A);
 
   @override

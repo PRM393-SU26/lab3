@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/reading_list_provider.dart';
 import '../providers/settings_provider.dart';
 import '../services/search_provider.dart';
+import '../services/analytics_service.dart';
 import 'detail_screen.dart';
 import 'reading_list_screen.dart';
 import 'trend_screen.dart';
@@ -34,6 +35,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     _searchFocusNode.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SearchProvider>().loadGlobalTopAuthors();
+      context.read<SearchProvider>().loadPersonalizedSuggestions();
     });
   }
 
@@ -500,6 +502,78 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                 }).toList(),
               ),
               const SizedBox(height: 24),
+            ],
+            if (provider.personalizedTopics.isNotEmpty) ...[
+              Row(
+                children: [
+                  Icon(Icons.auto_awesome, size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Recommend for You',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const SizedBox(height: 12),
+              ...provider.personalizedTopics.map((topic) {
+                final authors = provider.personalizedAuthors[topic] ?? [];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ActionChip(
+                        avatar: Icon(Icons.local_fire_department, size: 16, color: theme.colorScheme.primary),
+                        label: Text(topic),
+                        onPressed: () {
+                          AnalyticsService.logForYouTap(type: 'topic', value: topic);
+                          _searchController.text = topic;
+                          _performSearch();
+                        },
+                      ),
+                      if (provider.personalizedState == LoadState.loading && authors.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      else if (authors.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 8.0,
+                          children: authors.map((author) {
+                            return ActionChip(
+                              avatar: Icon(Icons.person_outline, size: 16, color: theme.colorScheme.secondary),
+                              label: Text(author.displayName),
+                              onPressed: () {
+                                if (author.authorId == null) return;
+                                AnalyticsService.logForYouTap(type: 'author', value: author.displayName);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => AuthorDetailScreen(
+                                      authorId: author.authorId!,
+                                      authorName: author.displayName,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 16),
             ],
             if (settings.showSuggestedTopics) ...[
               Text(

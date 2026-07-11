@@ -11,6 +11,7 @@ import '../services/remote_config_service.dart';
 import '../services/dashboard_export_service.dart';
 import '../services/analytics_service.dart';
 import '../providers/reading_list_provider.dart';
+import '../providers/auth_view_model.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -87,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-final user = FirebaseAuth.instance.currentUser;
+    final user = context.read<AuthViewModel>().currentUser;
     final provider = context.watch<SearchProvider>();
 
     return Scaffold(

@@ -59,4 +59,21 @@ class AnalyticsService {
       },
     );
   }
+
+  /// Logs when the user taps a personalized "Recommend for You" (For You)
+  /// suggestion. [type] identifies which screen it came from
+  /// ('topic', 'journal', 'keyword', 'author') and [value] is the label
+  /// the user tapped.
+  static Future<void> logForYouTap({
+    required String type,
+    required String value,
+  }) async {
+    await _analytics.logEvent(
+      name: 'for_you_suggestion_tap',
+      parameters: {
+        'suggestion_type': type,
+        'suggestion_value': value.length > 100 ? value.substring(0, 100) : value,
+      },
+    );
+  }
 }
