@@ -6,6 +6,7 @@ import '../models/analytics.dart';
 import 'keyword_search_result_screen.dart';
 import 'detail_screen.dart';
 import 'author_detail_screen.dart';
+import '../services/analytics_service.dart';
 
 class KeywordsScreen extends StatefulWidget {
   const KeywordsScreen({super.key});
@@ -26,11 +27,15 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
     super.didChangeDependencies();
     if (!_loaded) {
       _loaded = true;
-      final provider = context.read<SearchProvider>();
-      if (provider.globalKeywords.isEmpty &&
-          provider.globalKeywordsState != LoadState.loading) {
-        provider.loadGlobalKeywords();
-      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final provider = context.read<SearchProvider>();
+        if (provider.globalKeywords.isEmpty &&
+            provider.globalKeywordsState != LoadState.loading) {
+          provider.loadGlobalKeywords();
+        }
+        provider.loadPersonalizedKeywords();
+      });
     }
   }
 
@@ -780,6 +785,10 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (provider.personalizedKeywords.isNotEmpty) ...[
+              _ForYouKeywordsSection(provider: provider),
+              const SizedBox(height: 24),
+            ],
             // ── Header banner ────────────────────────────────
             Container(
               width: double.infinity,
@@ -1381,6 +1390,97 @@ class _EmptyTab extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Recommend for You" — surfaces the keywords/concepts the user views most
+/// often plus their top contributing authors, mirroring the Home screen's
+/// personalized suggestions.
+class _ForYouKeywordsSection extends StatelessWidget {
+  final SearchProvider provider;
+  const _ForYouKeywordsSection({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.auto_awesome, size: 18, color: cs.primary),
+            const SizedBox(width: 6),
+            Text(
+              'Recommend for You',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const SizedBox(height: 12),
+        ...provider.personalizedKeywords.map((keyword) {
+          final authors = provider.personalizedKeywordAuthors[keyword.conceptId] ?? [];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ActionChip(
+                  avatar: Icon(Icons.local_fire_department, size: 16, color: cs.primary),
+                  label: Text(keyword.displayName),
+                  onPressed: () {
+                    AnalyticsService.logForYouTap(type: 'keyword', value: keyword.displayName);
+                    provider.searchKeyword(keyword);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const KeywordSearchResultScreen(),
+                      ),
+                    );
+                  },
+                ),
+                if (provider.personalizedKeywordsState == LoadState.loading && authors.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else if (authors.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: authors.map((author) {
+                      return ActionChip(
+                        avatar: Icon(Icons.person_outline, size: 16, color: cs.secondary),
+                        label: Text(author.displayName),
+                        onPressed: () {
+                          if (author.authorId == null) return;
+                          AnalyticsService.logForYouTap(type: 'author', value: author.displayName);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AuthorDetailScreen(
+                                authorId: author.authorId!,
+                                authorName: author.displayName,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 }

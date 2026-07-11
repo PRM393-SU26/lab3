@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../services/search_provider.dart';
 import '../models/analytics.dart';
 import 'source_detail_screen.dart';
+import 'detail_screen.dart';
+import '../services/analytics_service.dart';
 
 class JournalsScreen extends StatefulWidget {
   const JournalsScreen({super.key});
@@ -36,6 +38,7 @@ class _JournalsScreenState extends State<JournalsScreen> {
       if (provider.topJournals.isEmpty) {
         provider.applyJournalFilter(); // Load global journals initially
       }
+      provider.loadPersonalizedJournals();
     });
   }
 
@@ -405,6 +408,10 @@ class _JournalsScreenState extends State<JournalsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (provider.personalizedJournals.isNotEmpty) ...[
+                    _ForYouJournalsSection(provider: provider),
+                    const SizedBox(height: 24),
+                  ],
                   // KPI cards
                   IntrinsicHeight(
                     child: Row(
@@ -966,4 +973,92 @@ class _GridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// "Recommend for You" — surfaces the journals the user views most often plus a
+/// few of their top publications, mirroring the Home screen's
+/// personalized suggestions.
+class _ForYouJournalsSection extends StatelessWidget {
+  final SearchProvider provider;
+  const _ForYouJournalsSection({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.auto_awesome, size: 18, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              'Recommend for You',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const SizedBox(height: 12),
+        ...provider.personalizedJournals.map((journal) {
+          final works = provider.personalizedJournalWorks[journal.sourceId] ?? [];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ActionChip(
+                  avatar: Icon(Icons.local_fire_department, size: 16, color: theme.colorScheme.primary),
+                  label: Text(journal.displayName),
+                  onPressed: () {
+                    if (journal.sourceId == null) return;
+                    AnalyticsService.logForYouTap(type: 'journal', value: journal.displayName);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SourceDetailScreen(
+                          sourceId: journal.sourceId!,
+                          sourceName: journal.displayName,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                if (provider.personalizedJournalsState == LoadState.loading && works.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else if (works.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: works.map((work) {
+                      return ActionChip(
+                        avatar: Icon(Icons.article_outlined, size: 16, color: theme.colorScheme.secondary),
+                        label: Text(
+                          work.title.length > 40 ? '${work.title.substring(0, 40)}…' : work.title,
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => DetailScreen(workId: work.id)),
+                          );
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
 }

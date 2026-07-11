@@ -5,6 +5,7 @@ import '../models/analytics.dart';
 import '../models/author_detail.dart';
 import '../services/openalex_service.dart';
 import '../services/search_history_service.dart';
+import '../services/item_frequency_service.dart';
 import '../utils/exceptions.dart';
 import 'analytics_service.dart';
 import 'remote_config_service.dart';
@@ -23,11 +24,35 @@ enum WorkSortOption {
   final String label;
 }
 
+/// Aggregated personal usage stats for the Profile screen, built entirely
+/// from on-device history — no data leaves the device.
+class PersonalStats {
+  final int totalSearches;
+  final int distinctTopics;
+  final int journalViews;
+  final int distinctJournals;
+  final int keywordViews;
+  final int distinctKeywords;
+
+  PersonalStats({
+    required this.totalSearches,
+    required this.distinctTopics,
+    required this.journalViews,
+    required this.distinctJournals,
+    required this.keywordViews,
+    required this.distinctKeywords,
+  });
+}
+
 /// Manages all search + analytics state for the app.
 /// Used with Provider – wrap MaterialApp with ChangeNotifierProvider.
 class SearchProvider extends ChangeNotifier {
   final OpenAlexService _service;
   final SearchHistoryService _historyService = SearchHistoryService();
+  final ItemFrequencyService _journalHistoryService =
+      ItemFrequencyService(storageKey: 'journal_view_freq');
+  final ItemFrequencyService _keywordHistoryService =
+      ItemFrequencyService(storageKey: 'keyword_view_freq');
 
   bool _isDeveloperMode = false;
   bool get isDeveloperMode => _isDeveloperMode;
@@ -119,6 +144,28 @@ class SearchProvider extends ChangeNotifier {
   // ── NEW: Global Top Authors ──────────────────
   LoadState globalTopAuthorsState = LoadState.idle;
   List<SimpleAuthor> globalTopAuthors = [];
+
+  // ── NEW: Personalized "For You" suggestions ───
+  // Built from the user's own search frequency (e.g. they often search
+  // "AI" and "Algorithm") plus the authors most associated with those
+  // topics, shown on the Home screen.
+  LoadState personalizedState = LoadState.idle;
+  List<String> personalizedTopics = [];
+  Map<String, List<AuthorStat>> personalizedAuthors = {};
+
+  // ── NEW: Personalized "For You" — Journals ────
+  // Built from the journals the user views most often, plus the top
+  // publications in each, shown on the Journals screen.
+  LoadState personalizedJournalsState = LoadState.idle;
+  List<JournalStat> personalizedJournals = [];
+  Map<String, List<Work>> personalizedJournalWorks = {};
+
+  // ── NEW: Personalized "For You" — Keywords ────
+  // Built from the keywords/concepts the user views most often, plus the
+  // top contributing authors for each, shown on the Keywords screen.
+  LoadState personalizedKeywordsState = LoadState.idle;
+  List<KeywordStat> personalizedKeywords = [];
+  Map<String, List<AuthorStat>> personalizedKeywordAuthors = {};
 
   // ── NEW: Country breakdown ────────────────────
   LoadState countryState = LoadState.idle;
@@ -258,6 +305,126 @@ class SearchProvider extends ChangeNotifier {
     await _historyService.add(topic);
     searchHistory = await _historyService.getAll();
     notifyListeners();
+
+    // Refresh "For You" suggestions in the background so the Home screen
+    // reflects the latest search frequency next time the user returns.
+    unawaited(loadPersonalizedSuggestions());
+  }
+
+  /// Loads the topics the user searches for most often, along with the
+  /// authors most associated with each topic, for the Home screen's
+  /// "For You" section.
+  Future<void> loadPersonalizedSuggestions() async {
+    final topics = await _historyService.getTopTopics(limit: 2);
+    if (topics.isEmpty) {
+      personalizedTopics = [];
+      personalizedAuthors = {};
+      personalizedState = LoadState.success;
+      notifyListeners();
+      return;
+    }
+
+    personalizedState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      final authorsByTopic = <String, List<AuthorStat>>{};
+      for (final topic in topics) {
+        try {
+          authorsByTopic[topic] = await _service.getTopAuthors(topic, limit: 5);
+        } catch (_) {
+          authorsByTopic[topic] = [];
+        }
+      }
+      personalizedTopics = topics;
+      personalizedAuthors = authorsByTopic;
+      personalizedState = LoadState.success;
+    } catch (_) {
+      personalizedState = LoadState.error;
+    }
+    notifyListeners();
+  }
+
+  /// Loads the journals the user views most often, along with a few of
+  /// their top publications, for the Journals screen's "Dành cho bạn"
+  /// section.
+  Future<void> loadPersonalizedJournals() async {
+    final items = await _journalHistoryService.getTopItems(limit: 2);
+    if (items.isEmpty) {
+      personalizedJournals = [];
+      personalizedJournalWorks = {};
+      personalizedJournalsState = LoadState.success;
+      notifyListeners();
+      return;
+    }
+
+    personalizedJournalsState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      final worksByJournal = <String, List<Work>>{};
+      for (final item in items) {
+        try {
+          worksByJournal[item.id] =
+              await _service.getWorksInJournal(item.id, limit: 3);
+        } catch (_) {
+          worksByJournal[item.id] = [];
+        }
+      }
+      personalizedJournals = items
+          .map((e) => JournalStat(
+                sourceId: e.id,
+                displayName: e.displayName,
+                paperCount: 0,
+              ))
+          .toList();
+      personalizedJournalWorks = worksByJournal;
+      personalizedJournalsState = LoadState.success;
+    } catch (_) {
+      personalizedJournalsState = LoadState.error;
+    }
+    notifyListeners();
+  }
+
+  /// Loads the keywords/concepts the user views most often, along with the
+  /// top contributing authors for each, for the Keywords screen's
+  /// "Dành cho bạn" section.
+  Future<void> loadPersonalizedKeywords() async {
+    final items = await _keywordHistoryService.getTopItems(limit: 2);
+    if (items.isEmpty) {
+      personalizedKeywords = [];
+      personalizedKeywordAuthors = {};
+      personalizedKeywordsState = LoadState.success;
+      notifyListeners();
+      return;
+    }
+
+    personalizedKeywordsState = LoadState.loading;
+    notifyListeners();
+
+    try {
+      final authorsByKeyword = <String, List<AuthorStat>>{};
+      for (final item in items) {
+        try {
+          authorsByKeyword[item.id] =
+              await _service.getAuthorsForConcept(item.id, limit: 5);
+        } catch (_) {
+          authorsByKeyword[item.id] = [];
+        }
+      }
+      personalizedKeywords = items
+          .map((e) => KeywordStat(
+                conceptId: e.id,
+                displayName: e.displayName,
+                paperCount: 0,
+              ))
+          .toList();
+      personalizedKeywordAuthors = authorsByKeyword;
+      personalizedKeywordsState = LoadState.success;
+    } catch (_) {
+      personalizedKeywordsState = LoadState.error;
+    }
+    notifyListeners();
   }
 
   /// Load next page (infinite scroll).
@@ -369,6 +536,9 @@ class SearchProvider extends ChangeNotifier {
       keywordJournals = results[2] as List<JournalStat>;
       keywordTrend = results[3] as List<YearlyCount>;
       keywordDetailState = LoadState.success;
+      unawaited(AnalyticsService.logViewKeyword(keyword.displayName));
+      unawaited(_keywordHistoryService.add(conceptId, keyword.displayName));
+      unawaited(loadPersonalizedKeywords());
     } catch (e) {
       keywordDetailState = LoadState.error;
       _setError(e.toString());
@@ -632,6 +802,9 @@ class SearchProvider extends ChangeNotifier {
       selectedSource = await _service.getSourceDetail(sourceId);
       if (selectedSource != null) {
         AnalyticsService.logViewJournal(selectedSource!.displayName);
+        unawaited(_journalHistoryService.add(
+            selectedSource!.id, selectedSource!.displayName));
+        unawaited(loadPersonalizedJournals());
       }
       sourceDetailState = LoadState.success;
     } on OpenAlexException catch (e) {
@@ -811,11 +984,35 @@ class SearchProvider extends ChangeNotifier {
       keywordAuthors = authors;
       keywordJournals = journals;
       keywordDetailState = LoadState.success;
+      unawaited(_keywordHistoryService.add(conceptId, keyword.displayName));
+      unawaited(loadPersonalizedKeywords());
     } catch (e) {
       keywordDetailState = LoadState.error;
       _setError(e.toString());
     }
     notifyListeners();
+  }
+
+  /// Aggregates the user's on-device activity (search topics, journals,
+  /// keywords viewed) for the Profile screen's personal stats section.
+  Future<PersonalStats> getPersonalStats() async {
+    final results = await Future.wait([
+      _historyService.totalSearches(),
+      _historyService.distinctTopicsCount(),
+      _journalHistoryService.totalViews(),
+      _journalHistoryService.distinctCount(),
+      _keywordHistoryService.totalViews(),
+      _keywordHistoryService.distinctCount(),
+    ]);
+
+    return PersonalStats(
+      totalSearches: results[0],
+      distinctTopics: results[1],
+      journalViews: results[2],
+      distinctJournals: results[3],
+      keywordViews: results[4],
+      distinctKeywords: results[5],
+    );
   }
 
   Future<void> loadMoreKeywordWorks() async {

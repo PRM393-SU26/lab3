@@ -2,8 +2,6 @@ import 'package:patrol/patrol.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:patrol/patrol.dart';
-import 'package:flutter_test/flutter_test.dart';
 /// Shared helpers reused across the Patrol E2E test suites.
 ///
 /// Every `patrolTest` starts the app from scratch, so most scenarios need
