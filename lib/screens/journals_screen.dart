@@ -22,10 +22,12 @@ class _JournalsScreenState extends State<JournalsScreen> {
   String? _selectedSubfield;
   String _sortOption = 'publication_desc';
   Timer? _debounce;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -56,175 +58,183 @@ class _JournalsScreenState extends State<JournalsScreen> {
             return Consumer<SearchProvider>(
               builder: (context, provider, _) {
                 // Prevent dropdown assertion errors when data changes
-                if (tempDomain != null && provider.fieldsByDomain[tempDomain] != null) {
-                  final validFields = provider.fieldsByDomain[tempDomain]!.map((e) => e.id).toSet();
+                if (tempDomain != null &&
+                    provider.fieldsByDomain[tempDomain] != null) {
+                  final validFields = provider.fieldsByDomain[tempDomain]!
+                      .map((e) => e.id)
+                      .toSet();
                   if (tempField != null && !validFields.contains(tempField)) {
                     tempField = null;
                   }
                 }
-                if (tempField != null && provider.subfieldsByField[tempField] != null) {
-                  final validSub = provider.subfieldsByField[tempField]!.map((e) => e.id).toSet();
-                  if (tempSubfield != null && !validSub.contains(tempSubfield)) {
+                if (tempField != null &&
+                    provider.subfieldsByField[tempField] != null) {
+                  final validSub = provider.subfieldsByField[tempField]!
+                      .map((e) => e.id)
+                      .toSet();
+                  if (tempSubfield != null &&
+                      !validSub.contains(tempSubfield)) {
                     tempSubfield = null;
                   }
                 }
 
                 return AlertDialog(
                   title: Text('Filter & Sort'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Domain:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    DropdownButton<String>(
-                      value: tempDomain,
-                      isExpanded: true,
-                      hint: Text('Select Domain'),
-                      items: provider.domains
-                          .map(
-                            (d) => DropdownMenuItem(
-                              value: d.id,
-                              child: Text(d.displayName),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Domain:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        DropdownButton<String>(
+                          value: tempDomain,
+                          isExpanded: true,
+                          hint: Text('Select Domain'),
+                          items: provider.domains
+                              .map(
+                                (d) => DropdownMenuItem(
+                                  value: d.id,
+                                  child: Text(d.displayName),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            setDialogState(() {
+                              tempDomain = val;
+                              tempField = null;
+                              tempSubfield = null;
+                            });
+                            if (val != null) provider.loadFields(val);
+                          },
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'Field:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        DropdownButton<String>(
+                          value: tempField,
+                          isExpanded: true,
+                          hint: Text('Select Field'),
+                          items:
+                              tempDomain != null &&
+                                  provider.fieldsByDomain[tempDomain] != null
+                              ? provider.fieldsByDomain[tempDomain]!
+                                    .map(
+                                      (f) => DropdownMenuItem(
+                                        value: f.id,
+                                        child: Text(f.displayName),
+                                      ),
+                                    )
+                                    .toList()
+                              : [],
+                          onChanged: tempDomain != null
+                              ? (val) {
+                                  setDialogState(() {
+                                    tempField = val;
+                                    tempSubfield = null;
+                                  });
+                                  if (val != null) provider.loadSubfields(val);
+                                }
+                              : null,
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'Subfield:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        DropdownButton<String>(
+                          value: tempSubfield,
+                          isExpanded: true,
+                          hint: Text('Select Subfield'),
+                          items:
+                              tempField != null &&
+                                  provider.subfieldsByField[tempField] != null
+                              ? provider.subfieldsByField[tempField]!
+                                    .map(
+                                      (sf) => DropdownMenuItem(
+                                        value: sf.id,
+                                        child: Text(sf.displayName),
+                                      ),
+                                    )
+                                    .toList()
+                              : [],
+                          onChanged: tempField != null
+                              ? (val) {
+                                  setDialogState(() {
+                                    tempSubfield = val;
+                                  });
+                                }
+                              : null,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Sort By:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        DropdownButton<String>(
+                          value: tempSort,
+                          isExpanded: true,
+                          items: [
+                            DropdownMenuItem(
+                              value: 'publication_desc',
+                              child: Text('Publications (High to Low)'),
                             ),
-                          )
-                          .toList(),
-                      onChanged: (val) {
+                            DropdownMenuItem(
+                              value: 'citation_desc',
+                              child: Text('Citations (High to Low)'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'a_z',
+                              child: Text('Name (A-Z)'),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null)
+                              setDialogState(() => tempSort = val);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
                         setDialogState(() {
-                          tempDomain = val;
+                          tempDomain = null;
                           tempField = null;
                           tempSubfield = null;
                         });
-                        if (val != null) provider.loadFields(val);
                       },
+                      child: Text('Clear Filters'),
                     ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Field:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancel'),
                     ),
-                    DropdownButton<String>(
-                      value: tempField,
-                      isExpanded: true,
-                      hint: Text('Select Field'),
-                      items:
-                          tempDomain != null &&
-                              provider.fieldsByDomain[tempDomain] != null
-                          ? provider.fieldsByDomain[tempDomain]!
-                                .map(
-                                  (f) => DropdownMenuItem(
-                                    value: f.id,
-                                    child: Text(f.displayName),
-                                  ),
-                                )
-                                .toList()
-                          : [],
-                      onChanged: tempDomain != null
-                          ? (val) {
-                              setDialogState(() {
-                                tempField = val;
-                                tempSubfield = null;
-                              });
-                              if (val != null) provider.loadSubfields(val);
-                            }
-                          : null,
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Subfield:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    DropdownButton<String>(
-                      value: tempSubfield,
-                      isExpanded: true,
-                      hint: Text('Select Subfield'),
-                      items:
-                          tempField != null &&
-                              provider.subfieldsByField[tempField] != null
-                          ? provider.subfieldsByField[tempField]!
-                                .map(
-                                  (sf) => DropdownMenuItem(
-                                    value: sf.id,
-                                    child: Text(sf.displayName),
-                                  ),
-                                )
-                                .toList()
-                          : [],
-                      onChanged: tempField != null
-                          ? (val) {
-                              setDialogState(() {
-                                tempSubfield = val;
-                              });
-                            }
-                          : null,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Sort By:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    DropdownButton<String>(
-                      value: tempSort,
-                      isExpanded: true,
-                      items: [
-                        DropdownMenuItem(
-                          value: 'publication_desc',
-                          child: Text('Publications (High to Low)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'citation_desc',
-                          child: Text('Citations (High to Low)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'a_z',
-                          child: Text('Name (A-Z)'),
-                        ),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) setDialogState(() => tempSort = val);
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedDomain = tempDomain;
+                          _selectedField = tempField;
+                          _selectedSubfield = tempSubfield;
+                          _sortOption = tempSort;
+                        });
+                        provider.applyJournalFilter(
+                          query: _searchQuery,
+                          domainId: tempDomain,
+                          fieldId: tempField,
+                          subfieldId: tempSubfield,
+                        );
+                        Navigator.pop(context);
                       },
+                      child: Text('Apply'),
                     ),
                   ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    setDialogState(() {
-                      tempDomain = null;
-                      tempField = null;
-                      tempSubfield = null;
-                    });
-                  },
-                  child: Text('Clear Filters'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedDomain = tempDomain;
-                      _selectedField = tempField;
-                      _selectedSubfield = tempSubfield;
-                      _sortOption = tempSort;
-                    });
-                    provider.applyJournalFilter(
-                      query: _searchQuery,
-                      domainId: tempDomain,
-                      fieldId: tempField,
-                      subfieldId: tempSubfield,
-                    );
-                    Navigator.pop(context);
-                  },
-                  child: Text('Apply'),
-                ),
-              ],
-            );
+                );
               },
             );
           },
@@ -252,19 +262,28 @@ class _JournalsScreenState extends State<JournalsScreen> {
                       hintText: 'Search journals...',
                       prefixIcon: Icon(
                         Icons.search,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant.withOpacity(0.5),
                       ),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).dividerColor,
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).dividerColor,
+                        ),
                       ),
-                      contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 16,
+                      ),
                     ),
                     onChanged: (val) {
                       setState(() {
@@ -299,7 +318,10 @@ class _JournalsScreenState extends State<JournalsScreen> {
                     border: Border.all(color: Theme.of(context).dividerColor),
                   ),
                   child: IconButton(
-                    icon: Icon(Icons.filter_list, color: Theme.of(context).colorScheme.primary),
+                    icon: Icon(
+                      Icons.filter_list,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     tooltip: 'Filter & Sort',
                     onPressed: () => _showFilterSortDialog(context),
                   ),
@@ -310,356 +332,463 @@ class _JournalsScreenState extends State<JournalsScreen> {
           Expanded(
             child: Builder(
               builder: (context) {
-          if (provider.journalsState == LoadState.loading) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
-                  SizedBox(height: 16),
-                  Text(
-                    'Loading journals statistics...',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (provider.journalsState == LoadState.error) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text(
-                    provider.errorMessage ?? 'Failed to load journals',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (provider.topJournals.isEmpty) {
-            return _EmptyTab(
-              icon: Icons.menu_book_rounded,
-              message: 'No journal statistics available for this topic.',
-            );
-          }
-
-          // Apply filtering and sorting
-          List<JournalStat> filteredJournals = List.from(provider.topJournals);
-
-          if (_searchQuery.isNotEmpty) {
-            final q = _searchQuery.toLowerCase();
-            filteredJournals.sort((a, b) {
-              final aName = a.displayName.toLowerCase();
-              final bName = b.displayName.toLowerCase();
-              int scoreA = aName == q ? 3 : (aName.startsWith(q) ? 2 : 1);
-              int scoreB = bName == q ? 3 : (bName.startsWith(q) ? 2 : 1);
-
-              if (scoreA != scoreB) {
-                return scoreB.compareTo(scoreA); // Higher score first
-              } else {
-                if (_sortOption == 'publication_desc') {
-                  return b.paperCount.compareTo(a.paperCount);
-                } else if (_sortOption == 'citation_desc') {
-                  return b.citationCount.compareTo(a.citationCount);
-                } else {
-                  return aName.compareTo(bName);
-                }
-              }
-            });
-          } else {
-            if (_sortOption == 'publication_desc') {
-              filteredJournals.sort(
-                (a, b) => b.paperCount.compareTo(a.paperCount),
-              );
-            } else if (_sortOption == 'citation_desc') {
-              filteredJournals.sort(
-                (a, b) => b.citationCount.compareTo(a.citationCount),
-              );
-            } else if (_sortOption == 'a_z') {
-              filteredJournals.sort(
-                (a, b) => a.displayName.compareTo(b.displayName),
-              );
-            }
-          }
-
-          final maxCount = provider.topJournals
-              .map((e) => e.paperCount)
-              .fold(0, max);
-          final topJournal = provider.topJournals.reduce(
-            (a, b) => a.paperCount > b.paperCount ? a : b,
-          );
-          final maxHIndex = provider.topJournals
-              .map((e) => e.hIndex)
-              .fold(0, max);
-
-          return RefreshIndicator(
-            onRefresh: () => provider.loadTrendAnalysis(),
-            child: SingleChildScrollView(
-              physics: AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (provider.personalizedJournals.isNotEmpty) ...[
-                    _ForYouJournalsSection(provider: provider),
-                    const SizedBox(height: 24),
-                  ],
-                  // KPI cards
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                if (provider.journalsState == LoadState.loading) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Total Journals',
-                            value: '${provider.topJournals.length}',
-                            icon: Icons.menu_book_rounded,
-                            color: Theme.of(context).colorScheme.primary,
-                            bgColor: Theme.of(context).colorScheme.primaryContainer,
-                          ),
+                        CircularProgressIndicator(
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Max H-Index',
-                            value: '$maxHIndex',
-                            icon: Icons.show_chart_rounded,
-                            color: Color(0xFFD97706),
-                            bgColor: Color(0xFFFEF3C7),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading journals statistics...',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: _StatCard(
-                      label: 'Top Journal',
-                      value: topJournal.displayName,
-                      icon: Icons.emoji_events_rounded,
-                      color: Color(0xFF059669),
-                      bgColor: Color(0xFFD1FAE5),
-                    ),
-                  ),
-                  SizedBox(height: 20),
+                  );
+                }
 
-                  // Bubble Chart
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.02),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
+                if (provider.journalsState == LoadState.error) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        SizedBox(height: 16),
+                        Text(
+                          provider.errorMessage ?? 'Failed to load journals',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
+                  );
+                }
+
+                if (provider.topJournals.isEmpty) {
+                  return _EmptyTab(
+                    icon: Icons.menu_book_rounded,
+                    message: 'No journal statistics available for this topic.',
+                  );
+                }
+
+                // Apply filtering and sorting
+                List<JournalStat> filteredJournals = List.from(
+                  provider.topJournals,
+                );
+
+                if (_searchQuery.isNotEmpty) {
+                  final q = _searchQuery.toLowerCase();
+                  filteredJournals.sort((a, b) {
+                    final aName = a.displayName.toLowerCase();
+                    final bName = b.displayName.toLowerCase();
+                    int scoreA = aName == q ? 3 : (aName.startsWith(q) ? 2 : 1);
+                    int scoreB = bName == q ? 3 : (bName.startsWith(q) ? 2 : 1);
+
+                    if (scoreA != scoreB) {
+                      return scoreB.compareTo(scoreA); // Higher score first
+                    } else {
+                      if (_sortOption == 'publication_desc') {
+                        return b.paperCount.compareTo(a.paperCount);
+                      } else if (_sortOption == 'citation_desc') {
+                        return b.citationCount.compareTo(a.citationCount);
+                      } else {
+                        return aName.compareTo(bName);
+                      }
+                    }
+                  });
+                } else {
+                  if (_sortOption == 'publication_desc') {
+                    filteredJournals.sort(
+                      (a, b) => b.paperCount.compareTo(a.paperCount),
+                    );
+                  } else if (_sortOption == 'citation_desc') {
+                    filteredJournals.sort(
+                      (a, b) => b.citationCount.compareTo(a.citationCount),
+                    );
+                  } else if (_sortOption == 'a_z') {
+                    filteredJournals.sort(
+                      (a, b) => a.displayName.compareTo(b.displayName),
+                    );
+                  }
+                }
+
+                final maxCount = provider.topJournals
+                    .map((e) => e.paperCount)
+                    .fold(0, max);
+                final topJournal = provider.topJournals.reduce(
+                  (a, b) => a.paperCount > b.paperCount ? a : b,
+                );
+                final maxHIndex = provider.topJournals
+                    .map((e) => e.hIndex)
+                    .fold(0, max);
+
+                return RefreshIndicator(
+                  onRefresh: () => provider.applyJournalFilter(
+                    query: _searchQuery,
+                    domainId: _selectedDomain,
+                    fieldId: _selectedField,
+                    subfieldId: _selectedSubfield,
+                  ),
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Journal Contribution',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15,
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'X: H-Index · Y: Papers · Color/Size: Citations',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        SizedBox(
-                          height: 200,
-                          child: _BubbleChart(data: filteredJournals),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 24),
-
-                  // Journal Rankings Title
-                  Text(
-                    'Journal Rankings',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  SizedBox(height: 12),
-
-                  // List of journals
-                  filteredJournals.isEmpty
-                      ? Padding(
-                          padding: EdgeInsets.all(32.0),
-                          child: Center(
-                            child: Text(
-                              'No journals match your filters.',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount: filteredJournals.length,
-                          itemBuilder: (context, index) {
-                            final j = filteredJournals[index];
-                            final ratio = maxCount > 0
-                                ? j.paperCount / maxCount
-                                : 0.0;
-
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Theme.of(context).dividerColor),
-                              ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () {
-                                  if (j.sourceId == null) return;
-                                  Navigator.push(
+                        if (provider.personalizedJournals.isNotEmpty) ...[
+                          _ForYouJournalsSection(provider: provider),
+                          const SizedBox(height: 24),
+                        ],
+                        // KPI cards
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: _StatCard(
+                                  label: 'Total Journals',
+                                  value: '${provider.topJournals.length}',
+                                  icon: Icons.menu_book_rounded,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  bgColor: Theme.of(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (_) => SourceDetailScreen(
-                                        sourceId: j.sourceId!,
-                                        sourceName: j.displayName,
+                                  ).colorScheme.primaryContainer,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: _StatCard(
+                                  label: 'Max H-Index',
+                                  value: '$maxHIndex',
+                                  icon: Icons.show_chart_rounded,
+                                  color: Color(0xFFD97706),
+                                  bgColor: Color(0xFFFEF3C7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: _StatCard(
+                            label: 'Top Journal',
+                            value: topJournal.displayName,
+                            icon: Icons.emoji_events_rounded,
+                            color: Color(0xFF059669),
+                            bgColor: Color(0xFFD1FAE5),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+
+                        // Bubble Chart
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Theme.of(context).dividerColor,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.02),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Journal Contribution',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'X: H-Index · Y: Papers · Color/Size: Citations',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16),
+                              SizedBox(
+                                height: 200,
+                                child: _BubbleChart(data: filteredJournals),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 24),
+
+                        // Journal Rankings Title
+                        Text(
+                          'Journal Rankings',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+
+                        // List of journals
+                        filteredJournals.isEmpty
+                            ? Padding(
+                                padding: EdgeInsets.all(32.0),
+                                child: Center(
+                                  child: Text(
+                                    'No journals match your filters.',
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                itemCount: filteredJournals.length,
+                                itemBuilder: (context, index) {
+                                  final j = filteredJournals[index];
+                                  final ratio = maxCount > 0
+                                      ? j.paperCount / maxCount
+                                      : 0.0;
+
+                                  return Container(
+                                    margin: EdgeInsets.only(bottom: 10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: Theme.of(context).dividerColor,
+                                      ),
+                                    ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(14),
+                                      onTap: () {
+                                        if (j.sourceId == null) return;
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => SourceDetailScreen(
+                                              sourceId: j.sourceId!,
+                                              sourceName: j.displayName,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    j.displayName,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      fontSize: 14,
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.onSurface,
+                                                    ),
+                                                  ),
+                                                ),
+                                                SizedBox(width: 8),
+                                                Icon(
+                                                  Icons
+                                                      .arrow_forward_ios_rounded,
+                                                  size: 14,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant
+                                                      .withOpacity(0.5),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 12),
+                                            // Papers progress bar
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          4,
+                                                        ),
+                                                    child: LinearProgressIndicator(
+                                                      value: ratio,
+                                                      backgroundColor:
+                                                          Theme.of(context)
+                                                              .colorScheme
+                                                              .primaryContainer,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation(
+                                                            Theme.of(context)
+                                                                .colorScheme
+                                                                .primary,
+                                                          ),
+                                                      minHeight: 6,
+                                                    ),
+                                                  ),
+                                                ),
+                                                SizedBox(width: 12),
+                                                Text(
+                                                  '${j.paperCount} papers',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 8),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'h-index: ${j.hIndex}',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'Citations: ${j.citationCount}',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   );
                                 },
-                                child: Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              j.displayName,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 14,
-                                                color:
-                                                    Theme.of(context).colorScheme.onSurface,
-                                              ),
-                                            ),
-                                          ),
-                                          SizedBox(width: 8),
-                                          Icon(
-                                            Icons.arrow_forward_ios_rounded,
-                                            size: 14,
-                                            color: Theme.of(context).colorScheme
-                                                .onSurfaceVariant
-                                                .withOpacity(0.5),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 12),
-                                      // Papers progress bar
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                              child: LinearProgressIndicator(
-                                                value: ratio,
-                                                backgroundColor: Theme.of(context).colorScheme
-                                                    .primaryContainer,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation(
-                                                      Theme.of(context).colorScheme.primary,
-                                                    ),
-                                                minHeight: 6,
-                                              ),
-                                            ),
-                                          ),
-                                          SizedBox(width: 12),
-                                          Text(
-                                            '${j.paperCount} papers',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: Theme.of(context).colorScheme.primary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 8),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            'h-index: ${j.hIndex}',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Theme.of(context).colorScheme
-                                                  .onSurfaceVariant,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Citations: ${j.citationCount}',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Theme.of(context).colorScheme
-                                                  .onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               ),
-                            );
-                          },
+                        SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: provider.journalsPage > 1
+                                  ? () {
+                                      provider.applyJournalFilter(
+                                        query: _searchQuery,
+                                        domainId: _selectedDomain,
+                                        fieldId: _selectedField,
+                                        subfieldId: _selectedSubfield,
+                                        page: provider.journalsPage - 1,
+                                      );
+                                      if (_scrollController.hasClients) {
+                                        _scrollController.animateTo(
+                                          0,
+                                          duration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          curve: Curves.easeInOut,
+                                        );
+                                      }
+                                    }
+                                  : null,
+                              icon: Icon(Icons.chevron_left, size: 20),
+                              label: Text('Prev'),
+                            ),
+                            SizedBox(width: 16),
+                            Text(
+                              'Page ${provider.journalsPage}',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(width: 16),
+                            ElevatedButton.icon(
+                              onPressed: provider.hasMoreJournals
+                                  ? () {
+                                      provider.applyJournalFilter(
+                                        query: _searchQuery,
+                                        domainId: _selectedDomain,
+                                        fieldId: _selectedField,
+                                        subfieldId: _selectedSubfield,
+                                        page: provider.journalsPage + 1,
+                                      );
+                                      if (_scrollController.hasClients) {
+                                        _scrollController.animateTo(
+                                          0,
+                                          duration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          curve: Curves.easeInOut,
+                                        );
+                                      }
+                                    }
+                                  : null,
+                              label: Text('Next'),
+                              icon: Icon(Icons.chevron_right, size: 20),
+                            ),
+                          ],
                         ),
-                ],
-              ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
-      ),
+          ),
         ],
       ),
     );
@@ -990,29 +1119,43 @@ class _ForYouJournalsSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.auto_awesome, size: 18, color: theme.colorScheme.primary),
+            Icon(
+              Icons.auto_awesome,
+              size: 18,
+              color: theme.colorScheme.primary,
+            ),
             const SizedBox(width: 6),
             Text(
               'Recommend for You',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 4),
         const SizedBox(height: 12),
         ...provider.personalizedJournals.map((journal) {
-          final works = provider.personalizedJournalWorks[journal.sourceId] ?? [];
+          final works =
+              provider.personalizedJournalWorks[journal.sourceId] ?? [];
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ActionChip(
-                  avatar: Icon(Icons.local_fire_department, size: 16, color: theme.colorScheme.primary),
+                  avatar: Icon(
+                    Icons.local_fire_department,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
                   label: Text(journal.displayName),
                   onPressed: () {
                     if (journal.sourceId == null) return;
-                    AnalyticsService.logForYouTap(type: 'journal', value: journal.displayName);
+                    AnalyticsService.logForYouTap(
+                      type: 'journal',
+                      value: journal.displayName,
+                    );
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -1024,7 +1167,8 @@ class _ForYouJournalsSection extends StatelessWidget {
                     );
                   },
                 ),
-                if (provider.personalizedJournalsState == LoadState.loading && works.isEmpty)
+                if (provider.personalizedJournalsState == LoadState.loading &&
+                    works.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: SizedBox(
@@ -1040,14 +1184,22 @@ class _ForYouJournalsSection extends StatelessWidget {
                     runSpacing: 8.0,
                     children: works.map((work) {
                       return ActionChip(
-                        avatar: Icon(Icons.article_outlined, size: 16, color: theme.colorScheme.secondary),
+                        avatar: Icon(
+                          Icons.article_outlined,
+                          size: 16,
+                          color: theme.colorScheme.secondary,
+                        ),
                         label: Text(
-                          work.title.length > 40 ? '${work.title.substring(0, 40)}…' : work.title,
+                          work.title.length > 40
+                              ? '${work.title.substring(0, 40)}…'
+                              : work.title,
                         ),
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => DetailScreen(workId: work.id)),
+                            MaterialPageRoute(
+                              builder: (_) => DetailScreen(workId: work.id),
+                            ),
                           );
                         },
                       );

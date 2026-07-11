@@ -49,10 +49,12 @@ class PersonalStats {
 class SearchProvider extends ChangeNotifier {
   final OpenAlexService _service;
   final SearchHistoryService _historyService = SearchHistoryService();
-  final ItemFrequencyService _journalHistoryService =
-      ItemFrequencyService(storageKey: 'journal_view_freq');
-  final ItemFrequencyService _keywordHistoryService =
-      ItemFrequencyService(storageKey: 'keyword_view_freq');
+  final ItemFrequencyService _journalHistoryService = ItemFrequencyService(
+    storageKey: 'journal_view_freq',
+  );
+  final ItemFrequencyService _keywordHistoryService = ItemFrequencyService(
+    storageKey: 'keyword_view_freq',
+  );
 
   bool _isDeveloperMode = false;
   bool get isDeveloperMode => _isDeveloperMode;
@@ -63,7 +65,7 @@ class SearchProvider extends ChangeNotifier {
   }
 
   SearchProvider({OpenAlexService? service})
-      : _service = service ?? OpenAlexService() {
+    : _service = service ?? OpenAlexService() {
     loadHistory();
     loadGlobalTopAuthors();
   }
@@ -80,10 +82,11 @@ class SearchProvider extends ChangeNotifier {
   List<Work> works = [];
   int totalResults = 0;
   int _currentPage = 1;
+  int get currentPage => _currentPage;
   bool _openAccessOnly = false;
   int? _yearFrom;
   int? _yearTo;
-  WorkSortOption _sortBy = WorkSortOption.citationsDesc;
+  WorkSortOption _sortBy = WorkSortOption.yearDesc;
   WorkSortOption get sortBy => _sortBy;
   bool get hasMore => works.length < totalResults;
 
@@ -109,6 +112,9 @@ class SearchProvider extends ChangeNotifier {
   // ── 4.5 Top journals ──────────────────────────
   LoadState journalsState = LoadState.idle;
   List<JournalStat> topJournals = [];
+  int journalsPage = 1;
+  bool hasMoreJournals = true;
+  bool isJournalsLoadingMore = false;
 
   // ── NEW: Source detail ────────────────────────
   LoadState sourceDetailState = LoadState.idle;
@@ -231,31 +237,57 @@ class SearchProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> applyJournalFilter({String? query, String? domainId, String? fieldId, String? subfieldId}) async {
-    journalsState = LoadState.loading;
-    notifyListeners();
-    
+  Future<void> applyJournalFilter({
+    String? query,
+    String? domainId,
+    String? fieldId,
+    String? subfieldId,
+    int? page,
+  }) async {
+    if (page != null) {
+      journalsPage = page;
+      journalsState = LoadState.loading;
+      notifyListeners();
+    } else {
+      journalsState = LoadState.loading;
+      journalsPage = 1;
+      hasMoreJournals = true;
+      topJournals = [];
+      notifyListeners();
+    }
+
     try {
       final limit = RemoteConfigService.maxJournalsDisplayed;
+      List<JournalStat> newJournals = [];
       if (query != null && query.isNotEmpty) {
-        topJournals = await _service.searchJournalsByName(
-          query, 
+        newJournals = await _service.searchJournalsByName(
+          query,
           limit: limit,
+          page: journalsPage,
           domainId: domainId,
           fieldId: fieldId,
           subfieldId: subfieldId,
         );
       } else {
-        topJournals = await _service.getTopJournals(
-          _currentTopic, 
+        newJournals = await _service.getTopJournals(
+          _currentTopic,
           limit: limit,
+          page: journalsPage,
           domainId: domainId,
           fieldId: fieldId,
           subfieldId: subfieldId,
         );
       }
+
+      if (newJournals.length < limit) {
+        hasMoreJournals = false;
+      } else {
+        hasMoreJournals = true;
+      }
+
+      topJournals = newJournals;
       journalsState = LoadState.success;
-    } catch(e) {
+    } catch (e) {
       _setError(e.toString());
       journalsState = LoadState.error;
     }
@@ -263,7 +295,8 @@ class SearchProvider extends ChangeNotifier {
   }
 
   /// Called when user submits a new search query.
-  Future<void> search(String topic, {
+  Future<void> search(
+    String topic, {
     bool openAccessOnly = false,
     int? yearFrom,
     int? yearTo,
@@ -365,18 +398,22 @@ class SearchProvider extends ChangeNotifier {
       final worksByJournal = <String, List<Work>>{};
       for (final item in items) {
         try {
-          worksByJournal[item.id] =
-              await _service.getWorksInJournal(item.id, limit: 3);
+          worksByJournal[item.id] = await _service.getWorksInJournal(
+            item.id,
+            limit: 3,
+          );
         } catch (_) {
           worksByJournal[item.id] = [];
         }
       }
       personalizedJournals = items
-          .map((e) => JournalStat(
-                sourceId: e.id,
-                displayName: e.displayName,
-                paperCount: 0,
-              ))
+          .map(
+            (e) => JournalStat(
+              sourceId: e.id,
+              displayName: e.displayName,
+              paperCount: 0,
+            ),
+          )
           .toList();
       personalizedJournalWorks = worksByJournal;
       personalizedJournalsState = LoadState.success;
@@ -406,18 +443,22 @@ class SearchProvider extends ChangeNotifier {
       final authorsByKeyword = <String, List<AuthorStat>>{};
       for (final item in items) {
         try {
-          authorsByKeyword[item.id] =
-              await _service.getAuthorsForConcept(item.id, limit: 5);
+          authorsByKeyword[item.id] = await _service.getAuthorsForConcept(
+            item.id,
+            limit: 5,
+          );
         } catch (_) {
           authorsByKeyword[item.id] = [];
         }
       }
       personalizedKeywords = items
-          .map((e) => KeywordStat(
-                conceptId: e.id,
-                displayName: e.displayName,
-                paperCount: 0,
-              ))
+          .map(
+            (e) => KeywordStat(
+              conceptId: e.id,
+              displayName: e.displayName,
+              paperCount: 0,
+            ),
+          )
           .toList();
       personalizedKeywordAuthors = authorsByKeyword;
       personalizedKeywordsState = LoadState.success;
@@ -427,10 +468,10 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Load next page (infinite scroll).
-  Future<void> loadMore() async {
-    if (!hasMore || searchState == LoadState.loading) return;
-    _currentPage++;
+  /// Load specific page.
+  Future<void> goToPage(int page) async {
+    if (searchState == LoadState.loading || page < 1) return;
+    _currentPage = page;
     searchState = LoadState.loading;
     notifyListeners();
 
@@ -443,10 +484,10 @@ class SearchProvider extends ChangeNotifier {
         yearTo: _yearTo,
         sort: _sortBy.apiValue,
       );
-      works.addAll(result.works);
+      works = result.works;
+      totalResults = result.total;
       searchState = LoadState.success;
     } on OpenAlexException catch (e) {
-      _currentPage--;
       _setError(e.message);
       searchState = LoadState.error;
     }
@@ -576,7 +617,12 @@ class SearchProvider extends ChangeNotifier {
       keywordWorksSort = 'publication_year:desc';
       hasMoreKeywordWorks = true;
       final results = await Future.wait([
-        _service.getWorksWithConcept(conceptId, limit: 10, page: keywordWorksPage, sort: keywordWorksSort),
+        _service.getWorksWithConcept(
+          conceptId,
+          limit: 10,
+          page: keywordWorksPage,
+          sort: keywordWorksSort,
+        ),
         _service.getAuthorsForConcept(conceptId, limit: 10),
         _service.getJournalsForConcept(conceptId, limit: 10),
         _service.getKeywordTrend(conceptId),
@@ -628,6 +674,9 @@ class SearchProvider extends ChangeNotifier {
     topPapers = [];
     journalsState = LoadState.idle;
     topJournals = [];
+    journalsPage = 1;
+    hasMoreJournals = true;
+    isJournalsLoadingMore = false;
     sourceDetailState = LoadState.idle;
     selectedSource = null;
     keywordsState = LoadState.idle;
@@ -738,7 +787,11 @@ class SearchProvider extends ChangeNotifier {
 
     await _loadTrend();
     await _loadTopPapers();
-    await Future.wait([_loadTopJournals(), _loadTopAuthors(), _loadCountryBreakdown()]);
+    await Future.wait([
+      _loadTopJournals(),
+      _loadTopAuthors(),
+      _loadCountryBreakdown(),
+    ]);
     await _loadCountryTopicMatrix();
 
     notifyListeners();
@@ -802,8 +855,12 @@ class SearchProvider extends ChangeNotifier {
       selectedSource = await _service.getSourceDetail(sourceId);
       if (selectedSource != null) {
         AnalyticsService.logViewJournal(selectedSource!.displayName);
-        unawaited(_journalHistoryService.add(
-            selectedSource!.id, selectedSource!.displayName));
+        unawaited(
+          _journalHistoryService.add(
+            selectedSource!.id,
+            selectedSource!.displayName,
+          ),
+        );
         unawaited(loadPersonalizedJournals());
       }
       sourceDetailState = LoadState.success;
@@ -883,13 +940,16 @@ class SearchProvider extends ChangeNotifier {
         countryMatrixState = LoadState.success;
         return;
       }
-      
+
       final topics = [
         _currentTopic,
         ...searchHistory.where((t) => t.isNotEmpty && t != _currentTopic),
       ].take(5).toList();
 
-      countryMatrix = await _service.getCountryTopicMatrix(topics, countryBreakdown);
+      countryMatrix = await _service.getCountryTopicMatrix(
+        topics,
+        countryBreakdown,
+      );
       countryMatrixState = LoadState.success;
     } catch (e) {
       _setError(e.toString());
@@ -975,9 +1035,17 @@ class SearchProvider extends ChangeNotifier {
       keywordWorksPage = 1;
       hasMoreKeywordWorks = true;
       final trend = await _service.getKeywordTrend(conceptId);
-      final works = await _service.getWorksWithConcept(conceptId, limit: 10, page: keywordWorksPage, sort: keywordWorksSort);
+      final works = await _service.getWorksWithConcept(
+        conceptId,
+        limit: 10,
+        page: keywordWorksPage,
+        sort: keywordWorksSort,
+      );
       final authors = await _service.getAuthorsForConcept(conceptId, limit: 10);
-      final journals = await _service.getJournalsForConcept(conceptId, limit: 10);
+      final journals = await _service.getJournalsForConcept(
+        conceptId,
+        limit: 10,
+      );
 
       keywordTrend = trend;
       keywordWorks = works;
@@ -1016,13 +1084,21 @@ class SearchProvider extends ChangeNotifier {
   }
 
   Future<void> loadMoreKeywordWorks() async {
-    if (selectedKeyword == null || !hasMoreKeywordWorks || isKeywordWorksLoadingMore) return;
+    if (selectedKeyword == null ||
+        !hasMoreKeywordWorks ||
+        isKeywordWorksLoadingMore)
+      return;
     isKeywordWorksLoadingMore = true;
     notifyListeners();
 
     try {
       keywordWorksPage++;
-      final works = await _service.getWorksWithConcept(selectedKeyword!.conceptId!, limit: 10, page: keywordWorksPage, sort: keywordWorksSort);
+      final works = await _service.getWorksWithConcept(
+        selectedKeyword!.conceptId!,
+        limit: 10,
+        page: keywordWorksPage,
+        sort: keywordWorksSort,
+      );
       if (works.isEmpty) {
         hasMoreKeywordWorks = false;
       } else {
@@ -1045,7 +1121,12 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      keywordWorks = await _service.getWorksWithConcept(selectedKeyword!.conceptId!, limit: 10, page: keywordWorksPage, sort: keywordWorksSort);
+      keywordWorks = await _service.getWorksWithConcept(
+        selectedKeyword!.conceptId!,
+        limit: 10,
+        page: keywordWorksPage,
+        sort: keywordWorksSort,
+      );
       keywordDetailState = LoadState.success;
     } catch (e) {
       keywordDetailState = LoadState.error;
