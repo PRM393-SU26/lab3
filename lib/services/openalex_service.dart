@@ -87,12 +87,14 @@ class OpenAlexService {
       }
 
       try {
-        final response = await _client.get(
-          uri,
-          headers: {
-            'User-Agent': 'JournalTrendAnalyzer/1.0 (mailto:$email)',
-          },
-        ).timeout(_requestTimeout);
+        final response = await _client
+            .get(
+              uri,
+              headers: {
+                'User-Agent': 'JournalTrendAnalyzer/1.0 (mailto:$email)',
+              },
+            )
+            .timeout(_requestTimeout);
 
         if (response.statusCode == 200) {
           return jsonDecode(response.body) as Map<String, dynamic>;
@@ -139,16 +141,17 @@ class OpenAlexService {
     bool openAccessOnly = false,
     int? yearFrom,
     int? yearTo,
-    String sort = 'cited_by_count:desc',
+    String sort = 'publication_year:desc',
   }) async {
     final filters = <String>[];
     if (openAccessOnly) filters.add('is_oa:true');
-    if (yearFrom != null && yearTo != null) {
-      filters.add('publication_year:$yearFrom-$yearTo');
-    } else if (yearFrom != null) {
-      filters.add('publication_year:>=$yearFrom');
-    } else if (yearTo != null) {
-      filters.add('publication_year:<=$yearTo');
+    final currentYear = DateTime.now().year;
+    final maxYear = yearTo ?? currentYear;
+
+    if (yearFrom != null) {
+      filters.add('publication_year:$yearFrom-$maxYear');
+    } else {
+      filters.add('publication_year:-$maxYear');
     }
 
     final params = <String, String>{
@@ -193,7 +196,11 @@ class OpenAlexService {
     final data = await _get('/autocomplete/concepts', {'q': query});
     final results = data['results'] as List? ?? [];
     return results
-        .where((r) => r['display_name'] != null && r['display_name'].toString().isNotEmpty)
+        .where(
+          (r) =>
+              r['display_name'] != null &&
+              r['display_name'].toString().isNotEmpty,
+        )
         .map((r) {
           final rawId = r['id']?.toString() ?? '';
           final conceptId = rawId.replaceFirst('https://openalex.org/', '');
@@ -208,7 +215,10 @@ class OpenAlexService {
 
   /// Search concepts by text query — returns matching concepts.
   /// Used when user submits text without selecting autocomplete suggestion.
-  Future<List<KeywordStat>> searchConcepts(String query, {int limit = 10}) async {
+  Future<List<KeywordStat>> searchConcepts(
+    String query, {
+    int limit = 10,
+  }) async {
     if (query.trim().isEmpty) return [];
     final data = await _get('/concepts', {
       'search': query,
@@ -248,9 +258,10 @@ class OpenAlexService {
   /// Returns papers that cite [workId]. Use in PublicationDetail screen.
   Future<List<Work>> getRelatedWorks(String workId, {int limit = 5}) async {
     final id = workId.replaceFirst('https://openalex.org/', '');
+    final currentYear = DateTime.now().year;
     final data = await _get('/works', {
-      'filter': 'cites:$id',
-      'sort': 'cited_by_count:desc',
+      'filter': 'cites:$id,publication_year:-$currentYear',
+      'sort': 'publication_year:desc',
       'per_page': limit.toString(),
       'select':
           'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
@@ -272,17 +283,20 @@ class OpenAlexService {
     });
 
     final groups = data['group_by'] as List? ?? [];
-    final counts = groups
-        .where((g) {
-          final year = int.tryParse(g['key']?.toString() ?? '');
-          return year != null && year <= DateTime.now().year;
-        })
-        .map((g) => YearlyCount(
-              year: int.parse(g['key'].toString()),
-              count: _asInt(g['count']),
-            ))
-        .toList()
-      ..sort((a, b) => a.year.compareTo(b.year));
+    final counts =
+        groups
+            .where((g) {
+              final year = int.tryParse(g['key']?.toString() ?? '');
+              return year != null && year <= DateTime.now().year;
+            })
+            .map(
+              (g) => YearlyCount(
+                year: int.parse(g['key'].toString()),
+                count: _asInt(g['count']),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.year.compareTo(b.year));
 
     return counts;
   }
@@ -305,12 +319,17 @@ class OpenAlexService {
 
     final groups = data['group_by'] as List? ?? [];
     return groups
-        .where((g) =>
-            g['key_display_name'] != null &&
-            g['key_display_name'].toString().isNotEmpty)
+        .where(
+          (g) =>
+              g['key_display_name'] != null &&
+              g['key_display_name'].toString().isNotEmpty,
+        )
         .map((g) {
           final rawKey = g['key']?.toString() ?? '';
-          final code = rawKey.replaceFirst('https://openalex.org/countries/', '');
+          final code = rawKey.replaceFirst(
+            'https://openalex.org/countries/',
+            '',
+          );
           return CountryStat(
             countryCode: code,
             displayName: g['key_display_name'].toString(),
@@ -343,23 +362,28 @@ class OpenAlexService {
 
     // Run parallel API requests for each topic to get its country breakdown
     final results = await Future.wait(
-      topics.map((topic) => _get('/works', {
-        'search': topic,
-        'group_by': 'authorships.institutions.country_code',
-        'per_page': '10',
-      })),
+      topics.map(
+        (topic) => _get('/works', {
+          'search': topic,
+          'group_by': 'authorships.institutions.country_code',
+          'per_page': '10',
+        }),
+      ),
     );
 
     for (int i = 0; i < topics.length; i++) {
       final topic = topics[i];
       final responseData = results[i];
       final groups = responseData['group_by'] as List? ?? [];
-      
+
       for (final g in groups) {
         final rawKey = g['key']?.toString() ?? '';
-        final countryCode = rawKey.replaceFirst('https://openalex.org/countries/', '');
+        final countryCode = rawKey.replaceFirst(
+          'https://openalex.org/countries/',
+          '',
+        );
         final count = _asInt(g['count']);
-        
+
         if (countryCodes.contains(countryCode)) {
           if (!matrix.containsKey(countryCode)) {
             matrix[countryCode] = {};
@@ -377,8 +401,6 @@ class OpenAlexService {
     );
   }
 
-
-
   // ─────────────────────────────────────────────
   // NEW: OA STATUS BREAKDOWN
   // ─────────────────────────────────────────────
@@ -394,10 +416,12 @@ class OpenAlexService {
 
     final groups = data['group_by'] as List? ?? [];
     return groups
-        .map((g) => OaStat(
-              status: g['key']?.toString() ?? 'unknown',
-              count: _asInt(g['count']),
-            ))
+        .map(
+          (g) => OaStat(
+            status: g['key']?.toString() ?? 'unknown',
+            count: _asInt(g['count']),
+          ),
+        )
         .toList();
   }
 
@@ -429,6 +453,7 @@ class OpenAlexService {
   Future<List<JournalStat>> getTopJournals(
     String topic, {
     int limit = 10,
+    int page = 1,
     String? domainId,
     String? fieldId,
     String? subfieldId,
@@ -441,10 +466,10 @@ class OpenAlexService {
         (subfieldId == null || subfieldId.isEmpty)) {
       final filters = <String>['type:journal'];
 
-
       final params = <String, String>{
         'filter': filters.join(','),
         'per_page': limit.toString(),
+        'page': page.toString(),
         'sort': 'works_count:desc',
       };
 
@@ -475,12 +500,12 @@ class OpenAlexService {
 
     final params = <String, String>{
       'group_by': 'primary_location.source.id',
-      'per_page': limit.toString(),
+      'per_page': '200', // Fetch max possible to allow local pagination
     };
     if (topic.isNotEmpty) {
       params['search'] = topic;
     }
-    
+
     if (filters.isNotEmpty) {
       params['filter'] = filters.join(',');
     }
@@ -489,68 +514,91 @@ class OpenAlexService {
 
     final groups = data['group_by'] as List? ?? [];
     final List<JournalStat> rawList = groups
-        .where((g) =>
-            g['key_display_name'] != null &&
-            g['key_display_name'].toString().isNotEmpty)
-        .map((g) => JournalStat(
-              sourceId: g['key']?.toString(),
-              displayName: g['key_display_name'].toString(),
-              paperCount: _asInt(g['count']),
-            ))
+        .where(
+          (g) =>
+              g['key_display_name'] != null &&
+              g['key_display_name'].toString().isNotEmpty,
+        )
+        .map(
+          (g) => JournalStat(
+            sourceId: g['key']?.toString(),
+            displayName: g['key_display_name'].toString(),
+            paperCount: _asInt(g['count']),
+          ),
+        )
+        .skip((page - 1) * limit)
         .take(limit)
         .toList();
 
-    final List<JournalStat> enrichedList = await Future.wait(rawList.map((stat) async {
-      if (stat.sourceId != null && stat.sourceId!.isNotEmpty) {
-        try {
-          final detail = await getSourceDetail(stat.sourceId!);
-          return JournalStat(
-            sourceId: stat.sourceId,
-            displayName: stat.displayName,
-            paperCount: stat.paperCount,
-            hIndex: detail.hIndex,
-            citationCount: detail.citedByCount,
-          );
-        } catch (e) {
-          return stat;
+    final List<JournalStat> enrichedList = await Future.wait(
+      rawList.map((stat) async {
+        if (stat.sourceId != null && stat.sourceId!.isNotEmpty) {
+          try {
+            final detail = await getSourceDetail(stat.sourceId!);
+            return JournalStat(
+              sourceId: stat.sourceId,
+              displayName: stat.displayName,
+              paperCount: stat.paperCount,
+              hIndex: detail.hIndex,
+              citationCount: detail.citedByCount,
+            );
+          } catch (e) {
+            return stat;
+          }
         }
-      }
-      return stat;
-    }));
+        return stat;
+      }),
+    );
 
     return enrichedList;
   }
 
   /// Search journals by name directly using the /sources endpoint
-  Future<List<JournalStat>> searchJournalsByName(String query, {
+  Future<List<JournalStat>> searchJournalsByName(
+    String query, {
     int limit = 50,
+    int page = 1,
     String? domainId,
     String? fieldId,
     String? subfieldId,
   }) async {
+    final hasFilter = domainId != null || fieldId != null || subfieldId != null;
+
     final params = <String, String>{
       'search': query,
       'filter': 'type:journal',
-      'per_page': '100', // Fetch more for local filtering
+      'per_page': hasFilter ? '200' : limit.toString(),
       'sort': 'works_count:desc',
     };
+    if (!hasFilter) {
+      params['page'] = page.toString();
+    }
+
     final data = await _get('/sources', params);
     final results = data['results'] as List? ?? [];
-
-    final hasFilter = domainId != null || fieldId != null || subfieldId != null;
 
     final filtered = results.where((r) {
       if (!hasFilter) return true;
       final topics = r['topics'] as List? ?? [];
       for (var t in topics) {
-        if (domainId != null && t['domain']?['id']?.toString().endsWith(domainId) == true) return true;
-        if (fieldId != null && t['field']?['id']?.toString().endsWith(fieldId) == true) return true;
-        if (subfieldId != null && t['subfield']?['id']?.toString().endsWith(subfieldId) == true) return true;
+        if (domainId != null &&
+            t['domain']?['id']?.toString().endsWith(domainId) == true)
+          return true;
+        if (fieldId != null &&
+            t['field']?['id']?.toString().endsWith(fieldId) == true)
+          return true;
+        if (subfieldId != null &&
+            t['subfield']?['id']?.toString().endsWith(subfieldId) == true)
+          return true;
       }
       return false;
-    }).take(limit).toList();
+    }).toList();
 
-    return filtered.map((r) {
+    final paginated = hasFilter
+        ? filtered.skip((page - 1) * limit).take(limit).toList()
+        : filtered;
+
+    return paginated.map((r) {
       final summary = r['summary_stats'] as Map<String, dynamic>? ?? {};
       return JournalStat(
         sourceId: r['id']?.toString(),
@@ -578,10 +626,7 @@ class OpenAlexService {
   // 4.6  TOP AUTHORS
   // ─────────────────────────────────────────────
 
-  Future<List<AuthorStat>> getTopAuthors(
-    String topic, {
-    int limit = 10,
-  }) async {
+  Future<List<AuthorStat>> getTopAuthors(String topic, {int limit = 10}) async {
     final data = await _get('/works', {
       'search': topic,
       'group_by': 'authorships.author.id',
@@ -590,14 +635,18 @@ class OpenAlexService {
 
     final groups = data['group_by'] as List? ?? [];
     return groups
-        .where((g) =>
-            g['key_display_name'] != null &&
-            g['key_display_name'].toString().isNotEmpty)
-        .map((g) => AuthorStat(
-              authorId: g['key']?.toString(),
-              displayName: g['key_display_name'].toString(),
-              paperCount: _asInt(g['count']),
-            ))
+        .where(
+          (g) =>
+              g['key_display_name'] != null &&
+              g['key_display_name'].toString().isNotEmpty,
+        )
+        .map(
+          (g) => AuthorStat(
+            authorId: g['key']?.toString(),
+            displayName: g['key_display_name'].toString(),
+            paperCount: _asInt(g['count']),
+          ),
+        )
         .take(limit)
         .toList();
   }
@@ -669,9 +718,7 @@ class OpenAlexService {
     final total = worksData['meta']?['count'] ?? 0;
     final results = worksData['results'] as List? ?? [];
 
-    final citations = results
-        .map((w) => _asInt(w['cited_by_count']))
-        .toList();
+    final citations = results.map((w) => _asInt(w['cited_by_count'])).toList();
     final avg = citations.isEmpty
         ? 0.0
         : citations.reduce((a, b) => a + b) / citations.length;
@@ -688,13 +735,11 @@ class OpenAlexService {
     );
   }
 
-  Future<List<Work>> getAuthorWorks(
-    String authorId, {
-    int limit = 50,
-  }) async {
+  Future<List<Work>> getAuthorWorks(String authorId, {int limit = 50}) async {
     final id = authorId.replaceFirst('https://openalex.org/', '');
+    final currentYear = DateTime.now().year;
     final data = await _get('/works', {
-      'filter': 'authorships.author.id:$id',
+      'filter': 'authorships.author.id:$id,publication_year:-$currentYear',
       'sort': 'publication_year:desc',
       'per_page': limit.toString(),
       'select':
@@ -711,13 +756,19 @@ class OpenAlexService {
   // ─────────────────────────────────────────────
 
   /// Fetch related publications inside a specific journal/source.
-  Future<List<Work>> getWorksInJournal(String journalId, {int limit = 5}) async {
+  Future<List<Work>> getWorksInJournal(
+    String journalId, {
+    int limit = 5,
+  }) async {
     final id = journalId.replaceFirst('https://openalex.org/', '');
+    final currentYear = DateTime.now().year;
     final data = await _get('/works', {
-      'filter': 'primary_location.source.id:$id',
-      'sort': 'cited_by_count:desc',
+      'filter':
+          'primary_location.source.id:$id,publication_year:-$currentYear',
+      'sort': 'publication_year:desc',
       'per_page': limit.toString(),
-      'select': 'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
+      'select':
+          'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
     });
     return (data['results'] as List? ?? [])
         .map((e) => Work.fromJson(e as Map<String, dynamic>))
@@ -725,7 +776,10 @@ class OpenAlexService {
   }
 
   /// Fetch top keywords (concepts) associated with a topic.
-  Future<List<KeywordStat>> getTopKeywords(String topic, {int limit = 10}) async {
+  Future<List<KeywordStat>> getTopKeywords(
+    String topic, {
+    int limit = 10,
+  }) async {
     final data = await _get('/works', {
       'search': topic,
       'group_by': 'concepts.id',
@@ -733,7 +787,11 @@ class OpenAlexService {
     });
     final groups = data['group_by'] as List? ?? [];
     return groups
-        .where((g) => g['key_display_name'] != null && g['key_display_name'].toString().isNotEmpty)
+        .where(
+          (g) =>
+              g['key_display_name'] != null &&
+              g['key_display_name'].toString().isNotEmpty,
+        )
         .map((g) {
           final rawKey = g['key']?.toString() ?? '';
           final conceptId = rawKey.replaceFirst('https://openalex.org/', '');
@@ -756,17 +814,20 @@ class OpenAlexService {
       'per_page': '200',
     });
     final groups = data['group_by'] as List? ?? [];
-    final counts = groups
-        .where((g) {
-          final year = int.tryParse(g['key']?.toString() ?? '');
-          return year != null && year <= DateTime.now().year;
-        })
-        .map((g) => YearlyCount(
-              year: int.parse(g['key'].toString()),
-              count: _asInt(g['count']),
-            ))
-        .toList()
-      ..sort((a, b) => a.year.compareTo(b.year));
+    final counts =
+        groups
+            .where((g) {
+              final year = int.tryParse(g['key']?.toString() ?? '');
+              return year != null && year <= DateTime.now().year;
+            })
+            .map(
+              (g) => YearlyCount(
+                year: int.parse(g['key'].toString()),
+                count: _asInt(g['count']),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.year.compareTo(b.year));
     return counts;
   }
 
@@ -783,7 +844,8 @@ class OpenAlexService {
       'sort': sort,
       'per_page': limit.toString(),
       'page': page.toString(),
-      'select': 'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
+      'select':
+          'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
     });
     return (data['results'] as List? ?? [])
         .map((e) => Work.fromJson(e as Map<String, dynamic>))
@@ -791,7 +853,10 @@ class OpenAlexService {
   }
 
   /// Fetch contributing authors for a concept.
-  Future<List<AuthorStat>> getAuthorsForConcept(String conceptId, {int limit = 10}) async {
+  Future<List<AuthorStat>> getAuthorsForConcept(
+    String conceptId, {
+    int limit = 10,
+  }) async {
     final id = conceptId.replaceFirst('https://openalex.org/', '');
     final data = await _get('/works', {
       'filter': 'concepts.id:$id',
@@ -800,18 +865,27 @@ class OpenAlexService {
     });
     final groups = data['group_by'] as List? ?? [];
     return groups
-        .where((g) => g['key_display_name'] != null && g['key_display_name'].toString().isNotEmpty)
-        .map((g) => AuthorStat(
-              authorId: g['key']?.toString(),
-              displayName: g['key_display_name'].toString(),
-              paperCount: _asInt(g['count']),
-            ))
+        .where(
+          (g) =>
+              g['key_display_name'] != null &&
+              g['key_display_name'].toString().isNotEmpty,
+        )
+        .map(
+          (g) => AuthorStat(
+            authorId: g['key']?.toString(),
+            displayName: g['key_display_name'].toString(),
+            paperCount: _asInt(g['count']),
+          ),
+        )
         .take(limit)
         .toList();
   }
 
   /// Fetch related journals/sources for a concept.
-  Future<List<JournalStat>> getJournalsForConcept(String conceptId, {int limit = 10}) async {
+  Future<List<JournalStat>> getJournalsForConcept(
+    String conceptId, {
+    int limit = 10,
+  }) async {
     final id = conceptId.replaceFirst('https://openalex.org/', '');
     final data = await _get('/works', {
       'filter': 'concepts.id:$id',
@@ -820,15 +894,22 @@ class OpenAlexService {
     });
     final groups = data['group_by'] as List? ?? [];
     return groups
-        .where((g) => g['key_display_name'] != null && g['key_display_name'].toString().isNotEmpty)
-        .map((g) => JournalStat(
-              sourceId: g['key']?.toString(),
-              displayName: g['key_display_name'].toString(),
-              paperCount: _asInt(g['count']),
-            ))
+        .where(
+          (g) =>
+              g['key_display_name'] != null &&
+              g['key_display_name'].toString().isNotEmpty,
+        )
+        .map(
+          (g) => JournalStat(
+            sourceId: g['key']?.toString(),
+            displayName: g['key_display_name'].toString(),
+            paperCount: _asInt(g['count']),
+          ),
+        )
         .take(limit)
         .toList();
   }
+
   /// Fetch globally popular keywords/concepts (no topic required).
   /// Uses the /concepts endpoint sorted by works_count.
   Future<List<KeywordStat>> getGlobalTopKeywords({int limit = 15}) async {
@@ -861,7 +942,9 @@ class OpenAlexService {
   Future<List<TaxonomyItem>> getDomains() async {
     final data = await _get('/domains', {'per_page': '10'});
     final results = data['results'] as List? ?? [];
-    return results.map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>)).toList();
+    return results
+        .map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<TaxonomyItem>> getFields(String domainId) async {
@@ -870,7 +953,9 @@ class OpenAlexService {
       'per_page': '50',
     });
     final results = data['results'] as List? ?? [];
-    return results.map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>)).toList();
+    return results
+        .map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<TaxonomyItem>> getSubfields(String fieldId) async {
@@ -879,7 +964,9 @@ class OpenAlexService {
       'per_page': '100',
     });
     final results = data['results'] as List? ?? [];
-    return results.map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>)).toList();
+    return results
+        .map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   void dispose() => _client.close();

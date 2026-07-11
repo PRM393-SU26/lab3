@@ -17,12 +17,12 @@ class SearchScreen extends StatefulWidget {
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderStateMixin {
+class _SearchScreenState extends State<SearchScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _searchFocusNode = FocusNode();
   late TabController _tabController;
-
 
   @override
   void initState() {
@@ -31,7 +31,6 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     _tabController.addListener(() {
       setState(() {});
     });
-    _scrollController.addListener(_onScroll);
     _searchFocusNode.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SearchProvider>().loadGlobalTopAuthors();
@@ -48,19 +47,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      context.read<SearchProvider>().loadMore();
-    }
-  }
-
   void _performSearch() {
     final query = _searchController.text.trim();
     if (query.isNotEmpty) {
       context.read<SearchProvider>().clearSuggestions();
-      context.read<SearchProvider>().search(
-        query,
-      );
+      context.read<SearchProvider>().search(query);
       context.read<SearchProvider>().loadTrendAnalysis();
       context.read<SearchProvider>().loadDashboard();
     }
@@ -82,7 +73,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
       appBar: AppBar(
         leading: provider.currentTopic.isNotEmpty
             ? IconButton(
-                icon: const Icon(Icons.arrow_back), 
+                icon: const Icon(Icons.arrow_back),
                 tooltip: 'Back to Main',
                 onPressed: () {
                   _searchController.clear();
@@ -93,8 +84,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
             : null,
         title: const Text('Journal Trend Analyzer'),
         actions: [
-          if (provider.currentTopic.isNotEmpty)
-            _buildNavigationDropdown(theme),
+          if (provider.currentTopic.isNotEmpty) _buildNavigationDropdown(theme),
           IconButton(
             icon: const Icon(Icons.bookmarks_outlined),
             tooltip: 'Reading List',
@@ -111,9 +101,9 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
             ),
         ],
       ),
-        body: Column(
-          children: [
-            // Search & Filter Panel
+      body: Column(
+        children: [
+          // Search & Filter Panel
           ConstrainedBox(
             constraints: BoxConstraints(
               maxHeight: MediaQuery.sizeOf(context).height * 0.45,
@@ -127,132 +117,158 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextField(
-                            key: const Key('searchField'),
-                            controller: _searchController,
-                            focusNode: _searchFocusNode,
-                            decoration: InputDecoration(
-                              hintText: 'Search topic (e.g. machine learning)',
-                              prefixIcon: const Icon(Icons.search),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        context.read<SearchProvider>().clearSuggestions();
-                                        setState(() {});
-                                      },
-                                    )
-                                  : null,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextField(
+                                key: const Key('searchField'),
+                                controller: _searchController,
+                                focusNode: _searchFocusNode,
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'Search topic (e.g. machine learning)',
+                                  prefixIcon: const Icon(Icons.search),
+                                  suffixIcon: _searchController.text.isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(Icons.clear),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            context
+                                                .read<SearchProvider>()
+                                                .clearSuggestions();
+                                            setState(() {});
+                                          },
+                                        )
+                                      : null,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  filled: true,
+                                  fillColor: theme
+                                      .colorScheme
+                                      .surfaceContainerHighest
+                                      .withOpacity(0.3),
+                                ),
+                                onChanged: (val) {
+                                  context
+                                      .read<SearchProvider>()
+                                      .fetchSuggestions(val);
+                                  setState(() {});
+                                },
+                                onSubmitted: (_) {
+                                  context
+                                      .read<SearchProvider>()
+                                      .clearSuggestions();
+                                  _performSearch();
+                                },
                               ),
-                              filled: true,
-                              fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                            ),
-                            onChanged: (val) {
-                              context.read<SearchProvider>().fetchSuggestions(val);
-                              setState(() {});
-                            },
-                            onSubmitted: (_) {
-                              context.read<SearchProvider>().clearSuggestions();
-                              _performSearch();
-                            },
-                          ),
-                          if (_searchFocusNode.hasFocus &&
-                              provider.suggestions.isEmpty &&
-                              provider.searchHistory.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Wrap(
-                                spacing: 6.0,
-                                runSpacing: 4.0,
-                                children: provider.searchHistory.map((query) {
-                                  return InputChip(
-                                    visualDensity: VisualDensity.compact,
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    avatar: const Icon(Icons.history, size: 14),
-                                    label: Text(
+                              if (_searchFocusNode.hasFocus &&
+                                  provider.suggestions.isEmpty &&
+                                  provider.searchHistory.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Wrap(
+                                    spacing: 6.0,
+                                    runSpacing: 4.0,
+                                    children: provider.searchHistory.map((
                                       query,
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                    onPressed: () {
-                                      _searchController.text = query;
-                                      _performSearch();
-                                    },
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          if (provider.suggestions.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Material(
-                                elevation: 4,
-                                borderRadius: BorderRadius.circular(12),
-                                color: theme.colorScheme.surface,
-                                clipBehavior: Clip.antiAlias,
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(maxHeight: 180),
-                                  child: ListView.separated(
-                                    shrinkWrap: true,
-                                    padding: EdgeInsets.zero,
-                                    itemCount: provider.suggestions.length,
-                                    separatorBuilder: (_, _) => Divider(
-                                      height: 1,
-                                      color: theme.colorScheme.outlineVariant,
-                                    ),
-                                    itemBuilder: (context, index) {
-                                      final suggestion = provider.suggestions[index];
-                                      return ListTile(
-                                        dense: true,
+                                    ) {
+                                      return InputChip(
                                         visualDensity: VisualDensity.compact,
-                                        leading: const Icon(Icons.search, size: 18),
-                                        title: Text(
-                                          suggestion,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        avatar: const Icon(
+                                          Icons.history,
+                                          size: 14,
                                         ),
-                                        onTap: () {
-                                          _searchController.text = suggestion;
-                                          context.read<SearchProvider>().clearSuggestions();
-                                          setState(() {});
+                                        label: Text(
+                                          query,
+                                          style: theme.textTheme.bodySmall,
+                                        ),
+                                        onPressed: () {
+                                          _searchController.text = query;
                                           _performSearch();
                                         },
                                       );
-                                    },
+                                    }).toList(),
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: theme.colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                              if (provider.suggestions.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Material(
+                                    elevation: 4,
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: theme.colorScheme.surface,
+                                    clipBehavior: Clip.antiAlias,
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxHeight: 180,
+                                      ),
+                                      child: ListView.separated(
+                                        shrinkWrap: true,
+                                        padding: EdgeInsets.zero,
+                                        itemCount: provider.suggestions.length,
+                                        separatorBuilder: (_, _) => Divider(
+                                          height: 1,
+                                          color:
+                                              theme.colorScheme.outlineVariant,
+                                        ),
+                                        itemBuilder: (context, index) {
+                                          final suggestion =
+                                              provider.suggestions[index];
+                                          return ListTile(
+                                            dense: true,
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            leading: const Icon(
+                                              Icons.search,
+                                              size: 18,
+                                            ),
+                                            title: Text(
+                                              suggestion,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            onTap: () {
+                                              _searchController.text =
+                                                  suggestion;
+                                              context
+                                                  .read<SearchProvider>()
+                                                  .clearSuggestions();
+                                              setState(() {});
+                                              _performSearch();
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                        onPressed: _performSearch,
-                        child: const Text('Search'),
-                      ),
-                    ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: theme.colorScheme.onPrimary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: _performSearch,
+                            child: const Text('Search'),
+                          ),
+                        ),
                       ],
                     ),
-
-
                   ],
                 ),
               ),
@@ -274,12 +290,24 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                     ),
                   ],
                 ),
-                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : YearlyTrendTab(provider: provider),
-                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : const DashboardScreen(),
-                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : TopPapersTab(provider: provider),
-                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : TopJournalsTab(provider: provider),
-                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : TopAuthorsTab(provider: provider),
-                provider.currentTopic.isEmpty ? _buildResultsList(provider, theme, settings) : CountriesTab(provider: provider),
+                provider.currentTopic.isEmpty
+                    ? _buildResultsList(provider, theme, settings)
+                    : YearlyTrendTab(provider: provider),
+                provider.currentTopic.isEmpty
+                    ? _buildResultsList(provider, theme, settings)
+                    : const DashboardScreen(),
+                provider.currentTopic.isEmpty
+                    ? _buildResultsList(provider, theme, settings)
+                    : TopPapersTab(provider: provider),
+                provider.currentTopic.isEmpty
+                    ? _buildResultsList(provider, theme, settings)
+                    : TopJournalsTab(provider: provider),
+                provider.currentTopic.isEmpty
+                    ? _buildResultsList(provider, theme, settings)
+                    : TopAuthorsTab(provider: provider),
+                provider.currentTopic.isEmpty
+                    ? _buildResultsList(provider, theme, settings)
+                    : CountriesTab(provider: provider),
               ],
             ),
           ),
@@ -305,23 +333,15 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
       initialValue: _tabController.index,
       color: theme.colorScheme.surface,
       tooltip: 'Navigate',
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 4,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              currentItem['icon'] as IconData,
-              color: Colors.white,
-            ),
-            const Icon(
-              Icons.arrow_drop_down,
-              color: Colors.white,
-            ),
+            Icon(currentItem['icon'] as IconData, color: Colors.white),
+            const Icon(Icons.arrow_drop_down, color: Colors.white),
           ],
         ),
       ),
@@ -373,7 +393,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
         children: [
           Row(
             children: [
-              Icon(Icons.sort, size: 20, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.sort,
+                size: 20,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Sort by:',
@@ -426,7 +450,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildResultsList(SearchProvider provider, ThemeData theme, SettingsProvider settings) {
+  Widget _buildResultsList(
+    SearchProvider provider,
+    ThemeData theme,
+    SettingsProvider settings,
+  ) {
     if (provider.searchState == LoadState.idle && provider.works.isEmpty) {
       final List<String> suggestedTopics = [
         'Artificial Intelligence',
@@ -449,7 +477,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
             Center(
               child: Column(
                 children: [
-                  Icon(Icons.explore_outlined, size: 64, color: theme.colorScheme.primary.withOpacity(0.5)),
+                  Icon(
+                    Icons.explore_outlined,
+                    size: 64,
+                    color: theme.colorScheme.primary.withOpacity(0.5),
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Discover Research Trends',
@@ -491,9 +523,8 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                     avatar: const Icon(Icons.history, size: 16),
                     label: Text(query),
                     deleteIcon: const Icon(Icons.close, size: 14),
-                    onDeleted: () => context
-                        .read<SearchProvider>()
-                        .removeFromHistory(query),
+                    onDeleted: () =>
+                        context.read<SearchProvider>().removeFromHistory(query),
                     onPressed: () {
                       _searchController.text = query;
                       _performSearch();
@@ -506,7 +537,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
             if (provider.personalizedTopics.isNotEmpty) ...[
               Row(
                 children: [
-                  Icon(Icons.auto_awesome, size: 18, color: theme.colorScheme.primary),
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'Recommend for You',
@@ -526,15 +561,23 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ActionChip(
-                        avatar: Icon(Icons.local_fire_department, size: 16, color: theme.colorScheme.primary),
+                        avatar: Icon(
+                          Icons.local_fire_department,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        ),
                         label: Text(topic),
                         onPressed: () {
-                          AnalyticsService.logForYouTap(type: 'topic', value: topic);
+                          AnalyticsService.logForYouTap(
+                            type: 'topic',
+                            value: topic,
+                          );
                           _searchController.text = topic;
                           _performSearch();
                         },
                       ),
-                      if (provider.personalizedState == LoadState.loading && authors.isEmpty)
+                      if (provider.personalizedState == LoadState.loading &&
+                          authors.isEmpty)
                         const Padding(
                           padding: EdgeInsets.only(top: 8),
                           child: SizedBox(
@@ -550,11 +593,18 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                           runSpacing: 8.0,
                           children: authors.map((author) {
                             return ActionChip(
-                              avatar: Icon(Icons.person_outline, size: 16, color: theme.colorScheme.secondary),
+                              avatar: Icon(
+                                Icons.person_outline,
+                                size: 16,
+                                color: theme.colorScheme.secondary,
+                              ),
                               label: Text(author.displayName),
                               onPressed: () {
                                 if (author.authorId == null) return;
-                                AnalyticsService.logForYouTap(type: 'author', value: author.displayName);
+                                AnalyticsService.logForYouTap(
+                                  type: 'author',
+                                  value: author.displayName,
+                                );
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -588,7 +638,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                 runSpacing: 8.0,
                 children: suggestedTopics.map((topic) {
                   return ActionChip(
-                    avatar: Icon(Icons.trending_up, size: 16, color: theme.colorScheme.primary),
+                    avatar: Icon(
+                      Icons.trending_up,
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
                     label: Text(topic),
                     onPressed: () {
                       _searchController.text = topic;
@@ -610,9 +664,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
               if (provider.globalTopAuthorsState == LoadState.loading)
                 const SizedBox(
                   height: 100,
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: Center(child: CircularProgressIndicator()),
                 )
               else if (provider.globalTopAuthorsState == LoadState.error)
                 Card(
@@ -620,24 +672,36 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                   color: theme.colorScheme.errorContainer.withOpacity(0.2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: theme.colorScheme.error.withOpacity(0.3)),
+                    side: BorderSide(
+                      color: theme.colorScheme.error.withOpacity(0.3),
+                    ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline, color: theme.colorScheme.error),
+                        Icon(
+                          Icons.error_outline,
+                          color: theme.colorScheme.error,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Failed to load top authors.',
-                            style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                            style: TextStyle(
+                              color: theme.colorScheme.onErrorContainer,
+                            ),
                           ),
                         ),
                         TextButton(
-                          onPressed: () => context.read<SearchProvider>().loadGlobalTopAuthors(),
+                          onPressed: () => context
+                              .read<SearchProvider>()
+                              .loadGlobalTopAuthors(),
                           child: const Text('Retry'),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -648,7 +712,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                   runSpacing: 8.0,
                   children: provider.globalTopAuthors.map((author) {
                     return ActionChip(
-                      avatar: Icon(Icons.person, size: 16, color: theme.colorScheme.primary),
+                      avatar: Icon(
+                        Icons.person,
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      ),
                       label: Text(author.displayName),
                       onPressed: () {
                         Navigator.push(
@@ -700,12 +768,58 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(12),
-      itemCount: provider.works.length + (provider.hasMore ? 1 : 0),
+      itemCount: provider.works.length + 1,
       itemBuilder: (context, index) {
         if (index == provider.works.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20.0),
-            child: Center(child: CircularProgressIndicator()),
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: provider.currentPage > 1
+                      ? () {
+                          context.read<SearchProvider>().goToPage(
+                            provider.currentPage - 1,
+                          );
+                          if (_scrollController.hasClients) {
+                            _scrollController.animateTo(
+                              0,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          }
+                        }
+                      : null,
+                  icon: const Icon(Icons.chevron_left, size: 20),
+                  label: const Text('Prev'),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  'Page ${provider.currentPage}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton.icon(
+                  onPressed: provider.hasMore
+                      ? () {
+                          context.read<SearchProvider>().goToPage(
+                            provider.currentPage + 1,
+                          );
+                          if (_scrollController.hasClients) {
+                            _scrollController.animateTo(
+                              0,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          }
+                        }
+                      : null,
+                  label: const Text('Next'),
+                  icon: const Icon(Icons.chevron_right, size: 20),
+                ),
+              ],
+            ),
           );
         }
 
@@ -715,7 +829,9 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
         return Card(
           elevation: 2,
           margin: const EdgeInsets.symmetric(vertical: 6),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () {
@@ -748,7 +864,10 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                       if (work.isOpenAccess)
                         Container(
                           margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.green.shade100,
                             borderRadius: BorderRadius.circular(8),
@@ -791,7 +910,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                   Row(
                     children: [
                       if (work.publicationYear != null) ...[
-                        Icon(Icons.calendar_today, size: 14, color: theme.colorScheme.outline),
+                        Icon(
+                          Icons.calendar_today,
+                          size: 14,
+                          color: theme.colorScheme.outline,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${work.publicationYear}',
@@ -802,7 +925,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                         ),
                         const SizedBox(width: 16),
                       ],
-                      Icon(Icons.format_quote, size: 14, color: theme.colorScheme.outline),
+                      Icon(
+                        Icons.format_quote,
+                        size: 14,
+                        color: theme.colorScheme.outline,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Citations: ${work.citedByCount}',
@@ -893,7 +1020,10 @@ class _SettingsDialog extends StatelessWidget {
                 GestureDetector(
                   onTap: () => _showColorPicker(context, settings),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: settings.seedColor,
                       borderRadius: BorderRadius.circular(20),
@@ -904,7 +1034,11 @@ class _SettingsDialog extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.palette, size: 16, color: Colors.white),
+                        const Icon(
+                          Icons.palette,
+                          size: 16,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Pick color',
@@ -927,7 +1061,10 @@ class _SettingsDialog extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text('Suggested Topics', style: theme.textTheme.bodyLarge),
+                  child: Text(
+                    'Suggested Topics',
+                    style: theme.textTheme.bodyLarge,
+                  ),
                 ),
                 Switch(
                   value: settings.showSuggestedTopics,
@@ -940,7 +1077,10 @@ class _SettingsDialog extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text('Top contributing authors', style: theme.textTheme.bodyLarge),
+                  child: Text(
+                    'Top contributing authors',
+                    style: theme.textTheme.bodyLarge,
+                  ),
                 ),
                 Switch(
                   value: settings.showTopAuthors,
@@ -960,7 +1100,9 @@ class _SettingsDialog extends StatelessWidget {
       builder: (ctx) {
         return AlertDialog(
           title: const Text('Choose Theme Color'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           content: SizedBox(
             width: 280,
             child: Wrap(
