@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Users ────────────────────────────────────────────────
+    // Each user can read/write only their own document and subcollections.
+    // Cloud Functions use the Admin SDK which bypasses these rules.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      // FCM tokens — user can manage their own tokens.
+      match /fcm_tokens/{tokenId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // User interests — user can manage their own interests.
+      match /interests/{interestId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // ── Trend Snapshots ──────────────────────────────────────
+    // Written only by Cloud Functions (admin SDK).
+    // Authenticated users can read for display purposes.
+    match /trend_snapshots/{snapshotId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only Cloud Functions (admin) can write.
+    }
+
+    // ── Notification Log ─────────────────────────────────────
+    // Written by Cloud Functions. Users can read their own logs.
+    match /notification_log/{logId} {
+      allow read: if request.auth != null
+                  && resource.data.uid == request.auth.uid;
+      allow write: if false; // Only Cloud Functions (admin) can write.
+    }
+
+    // ── Global Config ────────────────────────────────────────
+    // Read-only for authenticated users. Managed via Firebase Console
+    // or Cloud Functions.
+    match /global_config/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

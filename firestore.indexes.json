@@ -1,0 +1,45 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "notification_log",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "sentAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notification_log",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "deduplicationKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "trend_snapshots",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "topicNormalized", "order": "ASCENDING" },
+        { "fieldPath": "snapshotDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "trend_snapshots",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "trendScore", "order": "DESCENDING" },
+        { "fieldPath": "snapshotDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "interests",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

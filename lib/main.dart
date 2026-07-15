@@ -12,6 +12,7 @@ import 'package:journal_trend/screens/login_screen.dart';
 import 'package:journal_trend/services/search_provider.dart';
 import 'package:journal_trend/services/fcm_service.dart';
 import 'package:journal_trend/services/remote_config_service.dart';
+import 'package:journal_trend/services/user_interest_sync_service.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -52,6 +53,11 @@ void main() async {
   // Initialize Lab3 Firebase backend configurations
   await RemoteConfigService.initialize();
   await FcmService.initialize();
+
+  // Sync user interest signals to Firestore (fire-and-forget).
+  // This makes locally-tracked search history and view frequency
+  // available to Cloud Functions for notification targeting.
+  UserInterestSyncService.syncInterests();
 
   runApp(
     MultiProvider(

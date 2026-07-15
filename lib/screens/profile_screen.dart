@@ -12,6 +12,7 @@ import '../services/dashboard_export_service.dart';
 import '../services/analytics_service.dart';
 import '../providers/reading_list_provider.dart';
 import '../providers/auth_view_model.dart';
+import 'notification_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -461,6 +462,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ],
+              ),
+            ),
+            SizedBox(height: 20),
+
+            // ── NOTIFICATION SETTINGS SHORTCUT ──────────────────
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.tune_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                title: Text(
+                  'Notification Settings',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                subtitle: Text(
+                  'Manage push notification types, quiet hours & limits',
+                  style: TextStyle(fontSize: 12),
+                ),
+                trailing: Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationSettingsScreen(),
+                    ),
+                  );
+                },
               ),
             ),
             SizedBox(height: 20),
