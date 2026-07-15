@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +33,7 @@ class FcmNotification {
 
 class FcmService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final List<FcmNotification> notifications = [];
   static ValueNotifier<int> notificationCount = ValueNotifier(0);
 
@@ -54,6 +57,11 @@ class FcmService {
       final body = message.notification?.body ?? 'New update received';
       _addNotification(title, body);
     });
+
+    // 5. Listen for token refresh and update Firestore.
+    _messaging.onTokenRefresh.listen((newToken) {
+      _saveTokenToFirestore(newToken);
+    });
   }
 
   static Future<void> _setupFcmInBackground() async {
@@ -73,10 +81,74 @@ class FcmService {
         if (kDebugMode) {
           print("FCM Token: $token");
         }
+        // Persist the token to Firestore so Cloud Functions can target
+        // this device when sending personalized notifications.
+        if (token != null) {
+          await _saveTokenToFirestore(token);
+        }
       }
     } catch (e) {
       if (kDebugMode) {
         print("FCM background setup failed: $e");
+      }
+    }
+  }
+
+  /// Saves the FCM token to `users/{uid}/fcm_tokens/{tokenHash}`.
+  /// Uses the last 12 chars of the token as the document ID to keep it
+  /// short but unique per device.  Also updates the user's `lastActiveAt`
+  /// timestamp so the re-engagement Cloud Function knows when the user
+  /// was last online.
+  static Future<void> _saveTokenToFirestore(String token) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final tokenId = token.length > 12
+          ? token.substring(token.length - 12)
+          : token;
+      final platform = kIsWeb
+          ? 'web'
+          : (defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android');
+
+      final userRef = _firestore.collection('users').doc(user.uid);
+
+      // Update the user document's last active timestamp.
+      await userRef.set({
+        'lastActiveAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Write or refresh the token document.
+      await userRef.collection('fcm_tokens').doc(tokenId).set({
+        'token': token,
+        'platform': platform,
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastRefreshedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (kDebugMode) {
+        print('FCM token saved to Firestore for user ${user.uid}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to save FCM token to Firestore: $e');
+      }
+    }
+  }
+
+  /// Call this on app resume or after login to refresh the token's
+  /// `lastRefreshedAt` and the user's `lastActiveAt`.
+  static Future<void> refreshToken() async {
+    try {
+      if (!kIsWeb) {
+        final token = await _messaging.getToken();
+        if (token != null) {
+          await _saveTokenToFirestore(token);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('FCM token refresh failed: $e');
       }
     }
   }

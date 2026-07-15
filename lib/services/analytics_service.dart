@@ -76,4 +76,100 @@ class AnalyticsService {
       },
     );
   }
+
+  // ─────────────────────────────────────────────
+  // NOTIFICATION-RELATED ANALYTICS EVENTS
+  // ─────────────────────────────────────────────
+
+  /// Logs when the user views the trend chart for a topic.
+  static Future<void> logViewTrendChart(String topic) async {
+    await _analytics.logEvent(
+      name: 'view_trend_chart',
+      parameters: {
+        'topic': topic.length > 100 ? topic.substring(0, 100) : topic,
+      },
+    );
+  }
+
+  /// Logs when the user opens the research dashboard for a topic.
+  static Future<void> logViewDashboard(String topic) async {
+    await _analytics.logEvent(
+      name: 'view_dashboard',
+      parameters: {
+        'topic': topic.length > 100 ? topic.substring(0, 100) : topic,
+      },
+    );
+  }
+
+  /// Logs when the user views an author's detail page.
+  static Future<void> logViewAuthorDetail({
+    required String authorId,
+    required String authorName,
+  }) async {
+    await _analytics.logEvent(
+      name: 'view_author_detail',
+      parameters: {
+        'author_id': authorId.length > 100 ? authorId.substring(0, 100) : authorId,
+        'author_name': authorName.length > 100 ? authorName.substring(0, 100) : authorName,
+      },
+    );
+  }
+
+  /// Logs when the user views a journal/source detail page.
+  static Future<void> logViewSourceDetail({
+    required String sourceId,
+    required String sourceName,
+  }) async {
+    await _analytics.logEvent(
+      name: 'view_source_detail',
+      parameters: {
+        'source_id': sourceId.length > 100 ? sourceId.substring(0, 100) : sourceId,
+        'source_name': sourceName.length > 100 ? sourceName.substring(0, 100) : sourceName,
+      },
+    );
+  }
+
+  /// Logs when a push notification is tapped / opened by the user.
+  static Future<void> logNotificationTapped({
+    required String type,
+    String? topic,
+  }) async {
+    await _analytics.logEvent(
+      name: 'notification_tapped',
+      parameters: {
+        'notification_type': type,
+        if (topic != null)
+          'topic': topic.length > 100 ? topic.substring(0, 100) : topic,
+      },
+    );
+  }
+
+  /// Logs when a push notification is dismissed without opening.
+  static Future<void> logNotificationDismissed({
+    required String type,
+    String? topic,
+  }) async {
+    await _analytics.logEvent(
+      name: 'notification_dismissed',
+      parameters: {
+        'notification_type': type,
+        if (topic != null)
+          'topic': topic.length > 100 ? topic.substring(0, 100) : topic,
+      },
+    );
+  }
+
+  /// Logs when the user changes a notification preference toggle.
+  static Future<void> logNotificationPrefsChanged({
+    required String setting,
+    required bool newValue,
+  }) async {
+    await _analytics.logEvent(
+      name: 'notification_prefs_changed',
+      parameters: {
+        'setting': setting,
+        'new_value': newValue ? 'true' : 'false',
+      },
+    );
+  }
 }
