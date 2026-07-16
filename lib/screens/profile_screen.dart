@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -24,6 +26,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isUploading = false;
   String? _uploadUrl;
   String? _uploadError;
+
+  bool _isCustomUploading = false;
+  String? _customUploadUrl;
+  String? _customUploadError;
+  String? _selectedFileName;
   Future<void> _handleSignOut() async {
     await AnalyticsService.logLogout();
     if (mounted) {
@@ -74,6 +81,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _uploadError = 'Upload failed: $e';
         _isUploading = false;
+      });
+    }
+  }
+
+  Future<void> _pickAndUploadCustomPdf() async {
+    setState(() {
+      _isCustomUploading = true;
+      _customUploadUrl = null;
+      _customUploadError = null;
+      _selectedFileName = null;
+    });
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        setState(() {
+          _isCustomUploading = false;
+        });
+        return;
+      }
+
+      final file = result.files.first;
+      setState(() {
+        _selectedFileName = file.name;
+      });
+
+      Uint8List? fileBytes = file.bytes;
+      if (fileBytes == null && file.path != null) {
+        final File ioFile = File(file.path!);
+        if (await ioFile.exists()) {
+          fileBytes = await ioFile.readAsBytes();
+        }
+      }
+
+      if (fileBytes == null) {
+        throw Exception('Could not read file data. Please try again.');
+      }
+
+      final url = await DashboardExportService.uploadCustomPdfToFirebase(
+        fileBytes,
+        file.name,
+      );
+
+      setState(() {
+        _customUploadUrl = url;
+        _isCustomUploading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _customUploadError = 'Upload failed: $e';
+        _isCustomUploading = false;
       });
     }
   }
@@ -376,6 +439,157 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: TextStyle(color: Colors.red, fontSize: 12),
                       ),
                     ],
+                  ],
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+
+            // ── UPLOAD PDF FROM DEVICE ────────────────────────
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.picture_as_pdf_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Upload PDF from Device',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Select any PDF file from your phone\'s local storage and upload it to Firebase Cloud Storage.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  if (_isCustomUploading) ...[
+                    if (_selectedFileName != null) ...[
+                      Text(
+                        'Uploading: $_selectedFileName',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                    ],
+                    Center(
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    )
+                  ] else
+                    ElevatedButton.icon(
+                      onPressed: _pickAndUploadCustomPdf,
+                      icon: Icon(Icons.file_upload),
+                      label: Text('Select & Upload PDF'),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  if (_customUploadUrl != null) ...[
+                    SizedBox(height: 12),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green.shade100),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Successfully Uploaded to Storage:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: Colors.green,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          SelectableText(
+                            _customUploadUrl!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.green.shade900,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: _customUploadUrl!),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Link copied to clipboard',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: Icon(Icons.copy, size: 14),
+                                label: Text(
+                                  'Copy',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              TextButton.icon(
+                                onPressed: () async {
+                                  final uri = Uri.parse(_customUploadUrl!);
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(
+                                      uri,
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                  }
+                                },
+                                icon: Icon(Icons.open_in_new, size: 14),
+                                label: Text(
+                                  'Open',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (_customUploadError != null) ...[
+                    SizedBox(height: 12),
+                    Text(
+                      _customUploadError!,
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
                   ],
                 ],
               ),
