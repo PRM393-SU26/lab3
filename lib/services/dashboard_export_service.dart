@@ -200,6 +200,27 @@ class DashboardExportService {
     );
   }
 
+  /// Upload an arbitrary PDF file bytes to Firebase Storage under uploads/ directory.
+  static Future<String> uploadCustomPdfToFirebase(Uint8List pdfBytes, String fileName) async {
+    final storageRef = FirebaseStorage.instance.ref();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    // Sanitize file name
+    final cleanName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9_.]'), '_');
+    final uploadRef = storageRef.child('uploads/pdf_${timestamp}_$cleanName');
+
+    final uploadTask = uploadRef.putData(
+      pdfBytes,
+      SettableMetadata(contentType: 'application/pdf'),
+    );
+
+    final snapshot = await uploadTask.timeout(
+      const Duration(seconds: 20),
+      onTimeout: () => throw Exception('Upload timed out. Please check your internet and Firebase Storage rules.'),
+    );
+    final downloadUrl = await snapshot.ref.getDownloadURL();
+    return downloadUrl;
+  }
+
   static Future<void> sharePdf(Uint8List pdfBytes, String topic) async {
     final xFile = XFile.fromData(
       pdfBytes,
