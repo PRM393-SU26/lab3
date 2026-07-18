@@ -13,10 +13,12 @@ void main() {
     'Test Case 10 - Remote Config values are retrieved and displayed',
     ($) async {
       app.main();
+      logPatrolTest(
+        'Test Case 10 - Remote Config values are retrieved and displayed',
+      );
       await signInWithMockAccount($);
 
-      await $.tap(find.byIcon(Icons.person_outline));
-      await $.pumpAndSettle();
+      await tapNavTab($, navProfileTabKey);
 
       // Verify the Remote Config section and its two configuration values
       // are displayed. The values fall back to the defaults declared in

@@ -1,8 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:patrol/patrol.dart';
 import 'package:journal_trend/main.dart' as app;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'test_helpers.dart';
 
@@ -12,42 +10,38 @@ import 'test_helpers.dart';
 ///   flow run reliably on CI/emulators without a live Google account).
 /// - Test Case 11: Logout.
 void main() {
-  patrolTest(
-    'Test Case 1 - Sign-In navigates to Home screen',
-    ($) async {
-      app.main();
-      await ensureLoginScreen($);
+  patrolTest('Test Case 1 - Sign-In navigates to Home screen', ($) async {
+    app.main();
+    logPatrolTest('Test Case 1 - Sign-In navigates to Home screen');
+    await ensureLoginScreen($);
 
-      // On the Login screen.
-      expect($('Mock/Developer Sign-In'), findsOneWidget);
+    // On the Login screen.
+    expect($('Mock/Developer Sign-In'), findsOneWidget);
 
-      // Perform sign-in.
-      await $.tap($('Mock/Developer Sign-In'));
-      await $.pumpAndSettle();
+    // Perform sign-in.
+    await $.tap($('Mock/Developer Sign-In'));
+    await $.pumpAndSettle();
 
-      // Verify successful navigation to the Home screen.
-      expect($('Journal Trend Analyzer'), findsOneWidget);
-      expect($('Search topic (e.g. machine learning)'), findsOneWidget);
-    },
-  );
+    // Verify successful navigation to the Home screen.
+    expect($('Journal Trend Analyzer'), findsOneWidget);
+    expect($('Search topic (e.g. machine learning)'), findsOneWidget);
+  });
 
-  patrolTest(
-    'Test Case 11 - Logout redirects to Login screen',
-    ($) async {
-      app.main();
-      await signInWithMockAccount($);
+  patrolTest('Test Case 11 - Logout redirects to Login screen', ($) async {
+    app.main();
+    logPatrolTest('Test Case 11 - Logout redirects to Login screen');
+    await signInWithMockAccount($);
 
-      // Go to Profile tab.
-      await $.tap(find.byIcon(Icons.person_outline));
-      await $.pumpAndSettle();
+    // Go to Profile tab (navigate by key: the icon here swaps to the
+    // signed-in user's avatar photo, so it can't be used as a finder).
+    await tapNavTab($, navProfileTabKey);
 
-      // Perform logout.
-      expect($('Sign Out'), findsOneWidget);
-      await $.tap($('Sign Out'));
-      await $.pumpAndSettle();
+    // Perform logout.
+    expect($('Sign Out'), findsOneWidget);
+    await $.tap($('Sign Out'));
+    await $.pumpAndSettle();
 
-      // Verify redirection to the Login screen.
-      expect($('Mock/Developer Sign-In'), findsOneWidget);
-    },
-  );
+    // Verify redirection to the Login screen.
+    expect($('Mock/Developer Sign-In'), findsOneWidget);
+  });
 }

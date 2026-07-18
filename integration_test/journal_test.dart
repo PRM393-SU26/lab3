@@ -12,11 +12,13 @@ void main() {
     'Test Case 4 - Journals tab shows journal statistics and journal list',
     ($) async {
       app.main();
+      logPatrolTest(
+        'Test Case 4 - Journals tab shows journal statistics and journal list',
+      );
       await signInWithMockAccount($);
       await searchTopic($, 'machine learning');
 
-      await $.tap(find.byIcon(Icons.menu_book_outlined));
-      await $.pumpAndSettle();
+      await tapNavTab($, navJournalsTabKey);
 
       // Verify journal statistics and journal list are displayed.
       expect($('Journal Analysis'), findsOneWidget);
@@ -25,26 +27,23 @@ void main() {
     },
   );
 
-  patrolTest(
-    'Test Case 5 - Opening a journal shows its details',
-    ($) async {
-      app.main();
-      await signInWithMockAccount($);
-      await searchTopic($, 'machine learning');
+  patrolTest('Test Case 5 - Opening a journal shows its details', ($) async {
+    app.main();
+    logPatrolTest('Test Case 5 - Opening a journal shows its details');
+    await signInWithMockAccount($);
+    await searchTopic($, 'machine learning');
 
-      await $.tap(find.byIcon(Icons.menu_book_outlined));
-      await $.pumpAndSettle();
-      expect($('Journal Rankings'), findsOneWidget);
+    await tapNavTab($, navJournalsTabKey);
+    expect($('Journal Rankings'), findsOneWidget);
 
-      // Open the first journal from the list.
-      await $.tap(find.byType(InkWell).first);
-      await $.pumpAndSettle(timeout: const Duration(seconds: 15));
+    // Open the first journal from the list (keyed by index).
+    await $.tap(find.byKey(const ValueKey('journalRankingCard_0')));
+    await $.pumpAndSettle(timeout: const Duration(seconds: 15));
 
-      // Verify journal details are displayed correctly.
-      expect($('Journal Metrics'), findsOneWidget);
-      expect($('Works Count'), findsOneWidget);
-      expect($('Total Citations'), findsOneWidget);
-      expect($('Related Publications'), findsOneWidget);
-    },
-  );
+    // Verify journal details are displayed correctly.
+    expect($('Journal Metrics'), findsOneWidget);
+    expect($('Works Count'), findsOneWidget);
+    expect($('Total Citations'), findsOneWidget);
+    expect($('Related Publications'), findsOneWidget);
+  });
 }

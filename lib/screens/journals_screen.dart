@@ -593,6 +593,7 @@ class _JournalsScreenState extends State<JournalsScreen> {
                                       : 0.0;
 
                                   return Container(
+                                    key: ValueKey('journalRankingCard_$index'),
                                     margin: EdgeInsets.only(bottom: 10),
                                     decoration: BoxDecoration(
                                       color: Colors.white,

@@ -49,10 +49,13 @@ dart pub global activate flutterfire_cli
 ```
 
 ## Check flutterfire
+
 ```bash
 flutterfire --version
 ```
+
 If you get:
+
 ```bash
 'flutterfire' is not recognized as an internal or external command...
 ```
@@ -66,7 +69,6 @@ Click New and paste:
 C:\Users\YourUsername\AppData\Local\Pub\Cache\bin (You should get this in the warning when install flutterfire)
 Click OK on all dialogs.
 Close all Command Prompt/PowerShell windows and open a new one and re-check.
-
 
 Open the project, add dependencies if needed (already added in this project):
 
@@ -82,6 +84,7 @@ flutter pub add firebase_remote_config
 ```
 
 Get dependencies:
+
 ```bash
 flutter pub get
 ```
@@ -108,16 +111,34 @@ patrol:
   test_directory: integration_test
 ```
 
-### Run all tests
+### Run all tests automatically
 
 ```bash
 patrol test
 ```
 
+This runs the Patrol suite end-to-end. If more than one device is connected, Patrol will prompt you to choose one.
+
+To avoid that prompt, pin the device explicitly:
+
+```bash
+patrol test -d emulator-5554
+```
+
+If you want the full suite, use this command and do not pass a single `integration_test/*.dart` file as the target.
+
 ### Run a specific test file
 
 ```bash
 patrol test -t integration_test/authentication_test.dart
+```
+
+If you want Patrol to execute the generated bundle directly, target `integration_test/test_bundle.dart` instead of an individual file.
+
+To run that specific file without any interactive prompt, add the device flag:
+
+```bash
+patrol test -t integration_test/authentication_test.dart -d emulator-5554
 ```
 
 ### Run on web (Chrome/Edge)

@@ -12,11 +12,13 @@ void main() {
     'Test Case 6 - Keywords tab shows keyword statistics and keyword list',
     ($) async {
       app.main();
+      logPatrolTest(
+        'Test Case 6 - Keywords tab shows keyword statistics and keyword list',
+      );
       await signInWithMockAccount($);
       await searchTopic($, 'machine learning');
 
-      await $.tap(find.byIcon(Icons.tag_outlined));
-      await $.pumpAndSettle();
+      await tapNavTab($, navKeywordsTabKey);
 
       // Verify keyword statistics and keyword list are displayed.
       expect($('Keyword Analysis'), findsOneWidget);
@@ -25,28 +27,26 @@ void main() {
     },
   );
 
-  patrolTest(
-    'Test Case 7 - Opening a keyword shows its analysis',
-    ($) async {
-      app.main();
-      await signInWithMockAccount($);
-      await searchTopic($, 'machine learning');
+  patrolTest('Test Case 7 - Opening a keyword shows its analysis', ($) async {
+    app.main();
+    logPatrolTest('Test Case 7 - Opening a keyword shows its analysis');
+    await signInWithMockAccount($);
+    await searchTopic($, 'machine learning');
 
-      await $.tap(find.byIcon(Icons.tag_outlined));
-      await $.pumpAndSettle();
-      expect($('Most Frequent Keywords'), findsOneWidget);
+    await tapNavTab($, navKeywordsTabKey);
+    expect($('Most Frequent Keywords'), findsOneWidget);
 
-      // Open the first keyword from the list.
-      await $.tap(find.byType(InkWell).first);
-      await $.pumpAndSettle(timeout: const Duration(seconds: 15));
+    // Open the first keyword from the "Most Frequent Keywords" list
+    // (keyed by index).
+    await $.tap(find.byKey(const ValueKey('keywordFrequentCard_0')));
+    await $.pumpAndSettle(timeout: const Duration(seconds: 15));
 
-      // Verify keyword analysis information is displayed: trend over time,
-      // top contributing authors (ranked by publication count), related
-      // journals and related publications.
-      expect($('Publication Trend Over Time'), findsOneWidget);
-      expect($('Top Contributing Authors'), findsOneWidget);
-      expect($('Related Journals'), findsOneWidget);
-      expect($('Related Publications'), findsOneWidget);
-    },
-  );
+    // Verify keyword analysis information is displayed: trend over time,
+    // top contributing authors (ranked by publication count), related
+    // journals and related publications.
+    expect($('Publication Trend Over Time'), findsOneWidget);
+    expect($('Top Contributing Authors'), findsOneWidget);
+    expect($('Related Journals'), findsOneWidget);
+    expect($('Related Publications'), findsOneWidget);
+  });
 }

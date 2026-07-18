@@ -9,7 +9,14 @@ import 'package:patrol/src/platform/contracts/contracts.dart';
 import 'package:test_api/src/backend/invoker.dart';
 
 // START: GENERATED TEST IMPORTS
-import 'integration_test/export_test.dart' as __export_test;
+import 'app_test.dart' as app_test;
+import 'authentication_test.dart' as authentication_test;
+import 'export_test.dart' as export_test;
+import 'journal_test.dart' as journal_test;
+import 'keyword_test.dart' as keyword_test;
+import 'profile_test.dart' as profile_test;
+import 'publication_test.dart' as publication_test;
+import 'remote_config_test.dart' as remote_config_test;
 // END: GENERATED TEST IMPORTS
 
 Future<void> main() async {
@@ -71,11 +78,16 @@ Future<void> main() async {
     reportGroupStructure(dartTestGroup);
   });
 
-  // START: GENERATED TEST GROUPS
-  group('.export_test', __export_test.main);
-  // END: GENERATED TEST GROUPS
-
-  print('[PATROL] registered suites: export_test');
+// START: GENERATED TEST GROUPS
+  group('app_test', app_test.main);
+  group('authentication_test', authentication_test.main);
+  group('export_test', export_test.main);
+  group('journal_test', journal_test.main);
+  group('keyword_test', keyword_test.main);
+  group('profile_test', profile_test.main);
+  group('publication_test', publication_test.main);
+  group('remote_config_test', remote_config_test.main);
+// END: GENERATED TEST GROUPS
 
   final dartTestGroup = await testExplorationCompleter.future;
   final appService = PatrolAppService(topLevelDartTestGroup: dartTestGroup);

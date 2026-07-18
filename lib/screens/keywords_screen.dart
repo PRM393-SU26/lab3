@@ -1086,6 +1086,7 @@ class _KeywordsScreenState extends State<KeywordsScreen> {
                     : 0.0;
 
                 return Container(
+                  key: ValueKey('keywordFrequentCard_$index'),
                   margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerLowest,
