@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/reading_list_provider.dart';
 import '../services/search_provider.dart';
 import '../utils/link_launcher.dart';
 import 'author_detail_screen.dart';
@@ -31,6 +32,64 @@ class _DetailScreenState extends State<DetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Publication Detail'),
+        actions: [
+          if (work != null) ...[
+            Consumer<ReadingListProvider>(
+              builder: (context, readingList, child) {
+                final isSaved = readingList.contains(work.id);
+                return IconButton(
+                  icon: Icon(
+                    isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    color: isSaved ? Colors.amber : null,
+                  ),
+                  tooltip: isSaved ? 'Remove Bookmark' : 'Bookmark',
+                  onPressed: () async {
+                    await readingList.toggle(work);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isSaved
+                                ? 'Removed bookmark (Cloud deleted)'
+                                : 'Bookmarked! (Saved to Cloud)',
+                          ),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+            ),
+            Consumer<ReadingListProvider>(
+              builder: (context, readingList, child) {
+                final isSaved = readingList.contains(work.id);
+                return IconButton(
+                  icon: Icon(
+                    isSaved ? Icons.favorite : Icons.favorite_border,
+                    color: isSaved ? Colors.red : null,
+                  ),
+                  tooltip: isSaved ? 'Remove Favorite' : 'Favorite',
+                  onPressed: () async {
+                    await readingList.toggle(work);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isSaved
+                                ? 'Removed favorite (Cloud deleted)'
+                                : 'Added to Favorites! (Saved to Cloud)',
+                          ),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+            ),
+          ],
+        ],
       ),
       body: Builder(
         builder: (context) {

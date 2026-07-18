@@ -4,6 +4,7 @@ import '../providers/auth_view_model.dart';
 import 'search_screen.dart';
 import 'journals_screen.dart';
 import 'keywords_screen.dart';
+import 'user_management_screen.dart';
 import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _MainScreenState extends State<MainScreen> {
     const SearchScreen(),
     const JournalsScreen(),
     const KeywordsScreen(),
+    const UserManagementScreen(),
     const ProfileScreen(),
   ];
 
@@ -52,6 +54,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.label_outlined),
             selectedIcon: Icon(Icons.label),
             label: 'Keywords',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: 'Users',
           ),
           Consumer<AuthViewModel>(
             builder: (context, auth, _) {

@@ -160,7 +160,7 @@ class OpenAlexService {
       'per_page': perPage.toString(),
       'page': page.toString(),
       'select':
-          'id,title,publication_year,cited_by_count,doi,open_access,authorships,primary_location,type',
+          'id,title,publication_year,cited_by_count,doi,open_access,authorships,primary_location,type,biblio',
     };
     if (filters.isNotEmpty) params['filter'] = filters.join(',');
 
@@ -264,7 +264,7 @@ class OpenAlexService {
       'sort': 'publication_year:desc',
       'per_page': limit.toString(),
       'select':
-          'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
+          'id,title,publication_year,cited_by_count,open_access,authorships,primary_location,biblio',
     });
     return (data['results'] as List? ?? [])
         .map((e) => Work.fromJson(e as Map<String, dynamic>))
@@ -438,7 +438,7 @@ class OpenAlexService {
       'sort': 'cited_by_count:desc',
       'per_page': limit.toString(),
       'select':
-          'id,title,publication_year,cited_by_count,doi,open_access,authorships,primary_location',
+          'id,title,publication_year,cited_by_count,doi,open_access,authorships,primary_location,biblio',
     });
 
     return (data['results'] as List? ?? [])
@@ -743,7 +743,7 @@ class OpenAlexService {
       'sort': 'publication_year:desc',
       'per_page': limit.toString(),
       'select':
-          'id,title,publication_year,cited_by_count,doi,open_access,authorships,primary_location,type',
+          'id,title,publication_year,cited_by_count,doi,open_access,authorships,primary_location,type,biblio',
     });
 
     return (data['results'] as List? ?? [])
@@ -768,7 +768,7 @@ class OpenAlexService {
       'sort': 'publication_year:desc',
       'per_page': limit.toString(),
       'select':
-          'id,title,publication_year,cited_by_count,open_access,authorships,primary_location',
+          'id,title,publication_year,cited_by_count,open_access,authorships,primary_location,biblio',
     });
     return (data['results'] as List? ?? [])
         .map((e) => Work.fromJson(e as Map<String, dynamic>))
@@ -966,6 +966,37 @@ class OpenAlexService {
     final results = data['results'] as List? ?? [];
     return results
         .map((e) => TaxonomyItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Fetch top keywords (concepts) associated with a journal.
+  Future<List<KeywordStat>> getKeywordsForJournal(
+    String journalId, {
+    int limit = 10,
+  }) async {
+    final id = journalId.replaceFirst('https://openalex.org/', '');
+    final data = await _get('/works', {
+      'filter': 'primary_location.source.id:$id',
+      'group_by': 'concepts.id',
+      'per_page': limit.toString(),
+    });
+    final groups = data['group_by'] as List? ?? [];
+    return groups
+        .where(
+          (g) =>
+              g['key_display_name'] != null &&
+              g['key_display_name'].toString().isNotEmpty,
+        )
+        .map((g) {
+          final rawKey = g['key']?.toString() ?? '';
+          final conceptId = rawKey.replaceFirst('https://openalex.org/', '');
+          return KeywordStat(
+            conceptId: conceptId,
+            displayName: g['key_display_name'].toString(),
+            paperCount: _asInt(g['count']),
+          );
+        })
+        .take(limit)
         .toList();
   }
 

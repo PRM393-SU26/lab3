@@ -29,6 +29,7 @@ class RemoteConfigService {
       await rc.setDefaults(<String, dynamic>{
         'max_journals_displayed': 10,
         'max_keywords_displayed': 10,
+        'max_pdf_size_kb': 512,
       });
 
       await rc.setConfigSettings(RemoteConfigSettings(
@@ -85,5 +86,15 @@ class RemoteConfigService {
       }
     } catch (_) {}
     return 10;
+  }
+
+  static int get maxPdfSizeKb {
+    try {
+      final rc = _remoteConfig;
+      if (rc != null) {
+        return rc.getInt('max_pdf_size_kb');
+      }
+    } catch (_) {}
+    return 512;
   }
 }

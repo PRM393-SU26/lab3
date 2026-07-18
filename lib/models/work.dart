@@ -9,6 +9,8 @@ class Work {
   final List<Authorship> authorships;
   final Source? primarySource;
   final String? type;
+  final String? volume;
+  final String? issue;
 
   Work({
     required this.id,
@@ -21,6 +23,8 @@ class Work {
     required this.authorships,
     this.primarySource,
     this.type,
+    this.volume,
+    this.issue,
   });
 
   static int _asInt(dynamic value, [int fallback = 0]) {
@@ -39,6 +43,10 @@ class Work {
       ));
     }
 
+    final biblio = json['biblio'] as Map<String, dynamic>? ?? {};
+    final volume = biblio['volume']?.toString();
+    final issue = biblio['issue']?.toString();
+
     return Work(
       id: json['id'] ?? '',
       title: json['title'] ?? 'Untitled',
@@ -56,6 +64,8 @@ class Work {
           ? Source.fromJson(json['primary_location']['source'])
           : null,
       type: json['type'],
+      volume: volume,
+      issue: issue,
     );
   }
 

@@ -138,6 +138,9 @@ class SearchProvider extends ChangeNotifier {
   LoadState journalWorksState = LoadState.idle;
   List<Work> journalWorks = [];
 
+  LoadState journalKeywordsState = LoadState.idle;
+  List<KeywordStat> journalKeywords = [];
+
   // ── 4.6 Top authors ───────────────────────────
   LoadState authorsState = LoadState.idle;
   List<AuthorStat> topAuthors = [];
@@ -847,8 +850,10 @@ class SearchProvider extends ChangeNotifier {
   Future<void> loadSourceDetail(String sourceId) async {
     selectedSource = null;
     journalWorks = [];
+    journalKeywords = [];
     sourceDetailState = LoadState.loading;
     journalWorksState = LoadState.loading;
+    journalKeywordsState = LoadState.loading;
     notifyListeners();
 
     try {
@@ -870,11 +875,19 @@ class SearchProvider extends ChangeNotifier {
     }
 
     try {
-      journalWorks = await _service.getWorksInJournal(sourceId, limit: 5);
+      journalWorks = await _service.getWorksInJournal(sourceId, limit: 50);
       journalWorksState = LoadState.success;
     } catch (e) {
       journalWorksState = LoadState.error;
     }
+
+    try {
+      journalKeywords = await _service.getKeywordsForJournal(sourceId, limit: 10);
+      journalKeywordsState = LoadState.success;
+    } catch (e) {
+      journalKeywordsState = LoadState.error;
+    }
+
     notifyListeners();
   }
 
