@@ -48,6 +48,7 @@ dependencies:
   firebase_storage: ^12.4.10
   firebase_messaging: ^15.2.10
   cloud_firestore: ^5.6.9
+  flutter_local_notifications: ^18.0.1
   # Analytics, Performance & Config
   firebase_analytics: ^11.6.0
   firebase_crashlytics: ^4.3.10
