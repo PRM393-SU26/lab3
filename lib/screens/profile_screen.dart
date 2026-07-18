@@ -32,6 +32,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _customUploadUrl;
   String? _customUploadError;
   String? _selectedFileName;
+
+  bool _isRefreshingConfig = false;
   Future<void> _handleSignOut() async {
     await AnalyticsService.logLogout();
     if (mounted) {
@@ -113,6 +115,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _selectedFileName = file.name;
       });
 
+      // ── Remote Config Size Limit Check ─────────────────
+      final sizeInKb = file.size / 1024;
+      final limitInKb = RemoteConfigService.maxPdfSizeKb;
+      if (sizeInKb > limitInKb) {
+        throw Exception(
+          'File size (${sizeInKb.toStringAsFixed(1)} KB) exceeds the limit of $limitInKb KB set by Remote Config.',
+        );
+      }
+
       Uint8List? fileBytes = file.bytes;
       if (fileBytes == null && file.path != null) {
         final File ioFile = File(file.path!);
@@ -136,10 +147,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     } catch (e) {
       setState(() {
-        _customUploadError = 'Upload failed: $e';
+        _customUploadError = '$e'.replaceFirst('Exception: ', '');
         _isCustomUploading = false;
       });
     }
+  }
+
+  Future<void> _refreshRemoteConfig() async {
+    setState(() {
+      _isRefreshingConfig = true;
+    });
+    await RemoteConfigService.refresh();
+    if (!mounted) return;
+    setState(() {
+      _isRefreshingConfig = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          RemoteConfigService.lastFetchSucceeded
+              ? 'Remote Config synced successfully'
+              : 'Sync failed, using cached/default values',
+        ),
+      ),
+    );
   }
 
   void _triggerMockNotification() {
@@ -240,15 +271,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       SizedBox(width: 8),
-                      Text(
-                        'Remote Configurations',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.onSurface,
+                      Expanded(
+                        child: Text(
+                          'Remote Configurations',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                       ),
+                      if (_isRefreshingConfig)
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        IconButton(
+                          onPressed: _refreshRemoteConfig,
+                          icon: Icon(Icons.refresh, size: 20),
+                          tooltip: 'Re-fetch Remote Config',
+                          visualDensity: VisualDensity.compact,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                     ],
+                  ),
+                  SizedBox(height: 4),
+                  // ── Sync Status Badge ──────────────────────────
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: RemoteConfigService.lastFetchSucceeded
+                          ? Colors.green.shade50
+                          : Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: RemoteConfigService.lastFetchSucceeded
+                            ? Colors.green.shade100
+                            : Colors.orange.shade100,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          RemoteConfigService.lastFetchSucceeded
+                              ? Icons.cloud_done_outlined
+                              : Icons.cloud_off_outlined,
+                          size: 16,
+                          color: RemoteConfigService.lastFetchSucceeded
+                              ? Colors.green.shade700
+                              : Colors.orange.shade800,
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            RemoteConfigService.lastFetchSucceeded
+                                ? 'Synced with Firebase Remote Config'
+                                : (RemoteConfigService.lastFetchError != null
+                                    ? 'Not synced — using default values (${RemoteConfigService.lastFetchError})'
+                                    : 'Not synced — using default values'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: RemoteConfigService.lastFetchSucceeded
+                                  ? Colors.green.shade700
+                                  : Colors.orange.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   SizedBox(height: 12),
                   Row(
@@ -283,6 +379,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       Text(
                         '${RemoteConfigService.maxKeywordsDisplayed}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Divider(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Max PDF Upload Size',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        '${RemoteConfigService.maxPdfSizeKb} KB',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
@@ -476,7 +592,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    'Select any PDF file from your phone\'s local storage and upload it to Firebase Cloud Storage.',
+                    'Select any PDF file from your phone\'s local storage and upload it to Firebase Cloud Storage. '
+                    'Files larger than ${RemoteConfigService.maxPdfSizeKb} KB (set via Remote Config) will be rejected.',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 13,
