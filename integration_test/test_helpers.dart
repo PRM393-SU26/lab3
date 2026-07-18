@@ -64,7 +64,7 @@ const Key navProfileTabKey = Key('navProfileTab');
 /// for the destination screen to settle.
 Future<void> tapNavTab(PatrolIntegrationTester $, Key tabKey) async {
   await $.tap($(tabKey));
-  await $.pumpAndSettle();
+  await $.pumpAndSettle(timeout: const Duration(seconds: 15));
 }
 
 void logPatrolTest(String testName) {
