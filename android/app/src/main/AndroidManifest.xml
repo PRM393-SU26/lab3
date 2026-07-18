@@ -1,9 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Required on Android 13+ (API 33) to show notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="journal_trend"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- Default FCM notification channel (Android 8+).
+             Must match the channel ID created in FcmService._channel. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="research_trends" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
