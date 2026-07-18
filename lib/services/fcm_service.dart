@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FcmNotification {
@@ -37,31 +38,111 @@ class FcmService {
   static final List<FcmNotification> notifications = [];
   static ValueNotifier<int> notificationCount = ValueNotifier(0);
 
+  // ── Local notification plugin ──────────────────────────────
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+  static int _nextNotifId = 0;
+
+  /// Android notification channel for research trend alerts.
+  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
+    'research_trends', // id — must match the channelId in Cloud Functions
+    'Research Trends', // name shown in Android settings
+    description: 'Notifications about trending research topics and updates',
+    importance: Importance.high,
+  );
+
   static Future<void> initialize() async {
     // 1. Load stored notifications first
     await loadNotifications();
 
-    // 2. Run FCM setup in background without blocking runApp()
+    // 2. Set up flutter_local_notifications
+    await _initLocalNotifications();
+
+    // 3. Run FCM setup in background without blocking runApp()
     _setupFcmInBackground();
 
-    // 3. Foreground messaging handler
+    // 4. Foreground messaging handler — show local notification
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final title = message.notification?.title ?? 'Alert';
       final body = message.notification?.body ?? 'New update received';
       _addNotification(title, body);
+      _showLocalNotification(title, body);
     });
 
-    // 4. Background messaging handler
+    // 5. Background/terminated → app opened handler
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       final title = message.notification?.title ?? 'Alert';
       final body = message.notification?.body ?? 'New update received';
       _addNotification(title, body);
     });
 
-    // 5. Listen for token refresh and update Firestore.
+    // 6. Listen for token refresh and update Firestore.
     _messaging.onTokenRefresh.listen((newToken) {
       _saveTokenToFirestore(newToken);
     });
+  }
+
+  /// Initializes the local notification plugin with Android & iOS settings
+  /// and creates the notification channel.
+  static Future<void> _initLocalNotifications() async {
+    // Android init — uses the app's default icon (@mipmap/ic_launcher).
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    // iOS/macOS init
+    const darwinSettings = DarwinInitializationSettings(
+      requestAlertPermission: false, // FCM already requests permission
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: darwinSettings,
+      macOS: darwinSettings,
+    );
+
+    await _localNotifications.initialize(initSettings);
+
+    // Create the Android notification channel.
+    // On Android 8+ (API 26+), notifications must be posted to a channel.
+    final androidPlugin =
+        _localNotifications.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      await androidPlugin.createNotificationChannel(_channel);
+    }
+  }
+
+  /// Shows an actual system notification in the phone's status bar / tray.
+  static Future<void> _showLocalNotification(String title, String body) async {
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        _channel.id,
+        _channel.name,
+        channelDescription: _channel.description,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+      );
+
+      const darwinDetails = DarwinNotificationDetails();
+
+      final details = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+      );
+
+      await _localNotifications.show(
+        _nextNotifId++,
+        title,
+        body,
+        details,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to show local notification: $e');
+      }
+    }
   }
 
   static Future<void> _setupFcmInBackground() async {
@@ -193,8 +274,10 @@ class FcmService {
     } catch (_) {}
   }
 
-  /// Helper to insert a mock notification for testing (useful when testing without play services)
+  /// Helper to insert a mock notification for testing.
+  /// Now also shows an actual system notification on the device.
   static Future<void> mockNotification(String title, String body) async {
     await _addNotification(title, body);
+    await _showLocalNotification(title, body);
   }
 }
