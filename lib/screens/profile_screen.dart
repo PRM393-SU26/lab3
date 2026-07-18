@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -25,6 +27,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isUploading = false;
   String? _uploadUrl;
   String? _uploadError;
+
+  bool _isCustomUploading = false;
+  String? _customUploadUrl;
+  String? _customUploadError;
+  String? _selectedFileName;
+
+  bool _isRefreshingConfig = false;
   Future<void> _handleSignOut() async {
     await AnalyticsService.logLogout();
     if (mounted) {
@@ -77,6 +86,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isUploading = false;
       });
     }
+  }
+
+  Future<void> _pickAndUploadCustomPdf() async {
+    setState(() {
+      _isCustomUploading = true;
+      _customUploadUrl = null;
+      _customUploadError = null;
+      _selectedFileName = null;
+    });
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        setState(() {
+          _isCustomUploading = false;
+        });
+        return;
+      }
+
+      final file = result.files.first;
+      setState(() {
+        _selectedFileName = file.name;
+      });
+
+      // ── Remote Config Size Limit Check ─────────────────
+      final sizeInKb = file.size / 1024;
+      final limitInKb = RemoteConfigService.maxPdfSizeKb;
+      if (sizeInKb > limitInKb) {
+        throw Exception(
+          'File size (${sizeInKb.toStringAsFixed(1)} KB) exceeds the limit of $limitInKb KB set by Remote Config.',
+        );
+      }
+
+      Uint8List? fileBytes = file.bytes;
+      if (fileBytes == null && file.path != null) {
+        final File ioFile = File(file.path!);
+        if (await ioFile.exists()) {
+          fileBytes = await ioFile.readAsBytes();
+        }
+      }
+
+      if (fileBytes == null) {
+        throw Exception('Could not read file data. Please try again.');
+      }
+
+      final url = await DashboardExportService.uploadCustomPdfToFirebase(
+        fileBytes,
+        file.name,
+      );
+
+      setState(() {
+        _customUploadUrl = url;
+        _isCustomUploading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _customUploadError = '$e'.replaceFirst('Exception: ', '');
+        _isCustomUploading = false;
+      });
+    }
+  }
+
+  Future<void> _refreshRemoteConfig() async {
+    setState(() {
+      _isRefreshingConfig = true;
+    });
+    await RemoteConfigService.refresh();
+    if (!mounted) return;
+    setState(() {
+      _isRefreshingConfig = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          RemoteConfigService.lastFetchSucceeded
+              ? 'Remote Config synced successfully'
+              : 'Sync failed, using cached/default values',
+        ),
+      ),
+    );
   }
 
   void _triggerMockNotification() {
@@ -177,15 +271,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       SizedBox(width: 8),
-                      Text(
-                        'Remote Configurations',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.onSurface,
+                      Expanded(
+                        child: Text(
+                          'Remote Configurations',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                       ),
+                      if (_isRefreshingConfig)
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        IconButton(
+                          onPressed: _refreshRemoteConfig,
+                          icon: Icon(Icons.refresh, size: 20),
+                          tooltip: 'Re-fetch Remote Config',
+                          visualDensity: VisualDensity.compact,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                     ],
+                  ),
+                  SizedBox(height: 4),
+                  // ── Sync Status Badge ──────────────────────────
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: RemoteConfigService.lastFetchSucceeded
+                          ? Colors.green.shade50
+                          : Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: RemoteConfigService.lastFetchSucceeded
+                            ? Colors.green.shade100
+                            : Colors.orange.shade100,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          RemoteConfigService.lastFetchSucceeded
+                              ? Icons.cloud_done_outlined
+                              : Icons.cloud_off_outlined,
+                          size: 16,
+                          color: RemoteConfigService.lastFetchSucceeded
+                              ? Colors.green.shade700
+                              : Colors.orange.shade800,
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            RemoteConfigService.lastFetchSucceeded
+                                ? 'Synced with Firebase Remote Config'
+                                : (RemoteConfigService.lastFetchError != null
+                                    ? 'Not synced — using default values (${RemoteConfigService.lastFetchError})'
+                                    : 'Not synced — using default values'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: RemoteConfigService.lastFetchSucceeded
+                                  ? Colors.green.shade700
+                                  : Colors.orange.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   SizedBox(height: 12),
                   Row(
@@ -220,6 +379,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       Text(
                         '${RemoteConfigService.maxKeywordsDisplayed}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Divider(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Max PDF Upload Size',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        '${RemoteConfigService.maxPdfSizeKb} KB',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
@@ -377,6 +556,158 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: TextStyle(color: Colors.red, fontSize: 12),
                       ),
                     ],
+                  ],
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+
+            // ── UPLOAD PDF FROM DEVICE ────────────────────────
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.picture_as_pdf_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Upload PDF from Device',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Select any PDF file from your phone\'s local storage and upload it to Firebase Cloud Storage. '
+                    'Files larger than ${RemoteConfigService.maxPdfSizeKb} KB (set via Remote Config) will be rejected.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  if (_isCustomUploading) ...[
+                    if (_selectedFileName != null) ...[
+                      Text(
+                        'Uploading: $_selectedFileName',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                    ],
+                    Center(
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    )
+                  ] else
+                    ElevatedButton.icon(
+                      onPressed: _pickAndUploadCustomPdf,
+                      icon: Icon(Icons.file_upload),
+                      label: Text('Select & Upload PDF'),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  if (_customUploadUrl != null) ...[
+                    SizedBox(height: 12),
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green.shade100),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Successfully Uploaded to Storage:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: Colors.green,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          SelectableText(
+                            _customUploadUrl!,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.green.shade900,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: _customUploadUrl!),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Link copied to clipboard',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: Icon(Icons.copy, size: 14),
+                                label: Text(
+                                  'Copy',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              TextButton.icon(
+                                onPressed: () async {
+                                  final uri = Uri.parse(_customUploadUrl!);
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(
+                                      uri,
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                  }
+                                },
+                                icon: Icon(Icons.open_in_new, size: 14),
+                                label: Text(
+                                  'Open',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (_customUploadError != null) ...[
+                    SizedBox(height: 12),
+                    Text(
+                      _customUploadError!,
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
                   ],
                 ],
               ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/search_provider.dart';
+import '../models/work.dart';
 import 'detail_screen.dart';
+import 'keyword_detail_screen.dart';
 
 class SourceDetailScreen extends StatefulWidget {
   final String sourceId;
@@ -40,6 +42,64 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SearchProvider>().loadSourceDetail(widget.sourceId);
     });
+  }
+
+  void _showVolumeArticlesDialog(BuildContext context, String volume, List<Work> works) {
+    final volumeWorks = works.where((w) => w.volume == volume).toList();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Articles in Volume $volume'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: volumeWorks.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text('No articles found in this volume.'),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: volumeWorks.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, idx) {
+                    final work = volumeWorks[idx];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        work.title,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          'Citations: ${work.citedByCount}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 12),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => DetailScreen(workId: work.id),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -119,111 +179,120 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
           }
 
           return DefaultTabController(
-            length: 2,
+            length: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: 
-                // ── Header card ───────────────────────────────────
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _slate200),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _slate900.withOpacity(0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Icon container
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [_indigo, Color(0xFF6366F1)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                  // ── Header card ───────────────────────────────────
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _slate200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _slate900.withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Icon container
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [_indigo, Color(0xFF6366F1)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          borderRadius: BorderRadius.circular(16),
+                          child: const Icon(
+                            Icons.menu_book_rounded,
+                            color: Colors.white,
+                            size: 30,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.menu_book_rounded,
-                          color: Colors.white,
-                          size: 30,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              source.displayName,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: _slate900,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                source.displayName,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: _slate900,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: [
-                                if (source.type != null)
-                                  _Badge(
-                                    label: _formatType(source.type!),
-                                    color: _indigo,
-                                    bgColor: _indigoLight,
-                                  ),
-                                if (source.isOa)
-                                  const _Badge(
-                                    label: 'Open Access',
-                                    color: _emerald,
-                                    bgColor: _emeraldLight,
-                                  ),
-                                if (source.isInDoaj)
-                                  const _Badge(
-                                    label: 'DOAJ',
-                                    color: _amber,
-                                    bgColor: _amberLight,
-                                  ),
-                              ],
-                            ),
-                            if (source.countryCode != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Mã số: ${source.id.replaceFirst("https://openalex.org/", "")}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: _indigo,
+                                ),
+                              ),
                               const SizedBox(height: 6),
-                              Row(
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
                                 children: [
-                                  const Icon(Icons.public_rounded,
-                                      size: 14, color: _slate400),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    source.countryCode!,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: _slate600,
+                                  if (source.type != null)
+                                    _Badge(
+                                      label: _formatType(source.type!),
+                                      color: _indigo,
+                                      bgColor: _indigoLight,
                                     ),
-                                  ),
+                                  if (source.isOa)
+                                    const _Badge(
+                                      label: 'Open Access',
+                                      color: _emerald,
+                                      bgColor: _emeraldLight,
+                                    ),
+                                  if (source.isInDoaj)
+                                    const _Badge(
+                                      label: 'DOAJ',
+                                      color: _amber,
+                                      bgColor: _amberLight,
+                                    ),
                                 ],
                               ),
+                              if (source.countryCode != null) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.public_rounded,
+                                        size: 14, color: _slate400),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      source.countryCode!,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: _slate600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
                 ),
                 const TabBar(
                   labelColor: _indigo,
@@ -233,6 +302,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
                   dividerColor: _slate200,
                   tabs: [
                     Tab(text: 'Publications'),
+                    Tab(text: 'Keywords'),
                     Tab(text: 'Profile'),
                   ],
                 ),
@@ -245,63 +315,109 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // ── Recent Volumes (Lần xuất bản gần đây) ─────────
+                            Builder(
+                              builder: (context) {
+                                final volumes = provider.journalWorks
+                                    .map((w) => w.volume)
+                                    .where((v) => v != null && v.trim().isNotEmpty)
+                                    .toSet()
+                                    .toList();
+                                if (volumes.isEmpty) return const SizedBox.shrink();
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const _SectionTitle(title: 'Recent Volumes (Lần xuất bản gần đây)'),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      height: 40,
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: volumes.length,
+                                        itemBuilder: (context, idx) {
+                                          final vol = volumes[idx]!;
+                                          return Padding(
+                                            padding: const EdgeInsets.only(right: 8.0),
+                                            child: ActionChip(
+                                              avatar: const Icon(Icons.folder_open_outlined, size: 14, color: _indigo),
+                                              label: Text('Volume $vol'),
+                                              onPressed: () {
+                                                _showVolumeArticlesDialog(context, vol, provider.journalWorks);
+                                              },
+                                              backgroundColor: _indigoLight,
+                                              side: BorderSide.none,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(20),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                  ],
+                                );
+                              },
+                            ),
+
                             // ── Stats grid ────────────────────────────────────
                             const _SectionTitle(title: 'Journal Metrics'),
-                const SizedBox(height: 10),
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.6,
-                  children: [
-                    _MetricCard(
-                      label: 'h-index',
-                      value: '${source.hIndex}',
-                      icon: Icons.trending_up_rounded,
-                      color: _indigo,
-                      bgColor: _indigoLight,
-                    ),
-                    _MetricCard(
-                      label: 'Works Count',
-                      value: _formatNumber(source.worksCount),
-                      icon: Icons.description_rounded,
-                      color: _violet,
-                      bgColor: _violetLight,
-                    ),
-                    _MetricCard(
-                      label: 'Total Citations',
-                      value: _formatNumber(source.citedByCount),
-                      icon: Icons.format_quote_rounded,
-                      color: _emerald,
-                      bgColor: _emeraldLight,
-                    ),
-                    _MetricCard(
-                      label: 'Avg Citations',
-                      value: source.worksCount > 0 
-                          ? (source.citedByCount / source.worksCount).toStringAsFixed(1)
-                          : '0.0',
-                      icon: Icons.analytics_outlined,
-                      color: Colors.pink,
-                      bgColor: Colors.pink.shade50,
-                    ),
-                    _MetricCard(
-                      label: 'Open Access',
-                      value: source.isOa ? 'Yes' : 'No',
-                      icon: Icons.lock_open_rounded,
-                      color: Colors.cyan,
-                      bgColor: Colors.cyan.shade50,
-                    ),
-                    _MetricCard(
-                      label: 'In DOAJ',
-                      value: source.isInDoaj ? 'Yes' : 'No',
-                      icon: Icons.verified_rounded,
-                      color: source.isInDoaj ? _amber : _slate400,
-                      bgColor: source.isInDoaj ? _amberLight : _slate100,
-                    ),
-                  ],
-                ),
+                            const SizedBox(height: 10),
+                            GridView.count(
+                              crossAxisCount: 2,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 1.6,
+                              children: [
+                                _MetricCard(
+                                  label: 'h-index',
+                                  value: '${source.hIndex}',
+                                  icon: Icons.trending_up_rounded,
+                                  color: _indigo,
+                                  bgColor: _indigoLight,
+                                ),
+                                _MetricCard(
+                                  label: 'Works Count',
+                                  value: _formatNumber(source.worksCount),
+                                  icon: Icons.description_rounded,
+                                  color: _violet,
+                                  bgColor: _violetLight,
+                                ),
+                                _MetricCard(
+                                  label: 'Total Citations',
+                                  value: _formatNumber(source.citedByCount),
+                                  icon: Icons.format_quote_rounded,
+                                  color: _emerald,
+                                  bgColor: _emeraldLight,
+                                ),
+                                _MetricCard(
+                                  label: 'Avg Citations',
+                                  value: source.worksCount > 0 
+                                      ? (source.citedByCount / source.worksCount).toStringAsFixed(1)
+                                      : '0.0',
+                                  icon: Icons.analytics_outlined,
+                                  color: Colors.pink,
+                                  bgColor: Colors.pink.shade50,
+                                ),
+                                _MetricCard(
+                                  label: 'Open Access',
+                                  value: source.isOa ? 'Yes' : 'No',
+                                  icon: Icons.lock_open_rounded,
+                                  color: Colors.cyan,
+                                  bgColor: Colors.cyan.shade50,
+                                ),
+                                _MetricCard(
+                                  label: 'In DOAJ',
+                                  value: source.isInDoaj ? 'Yes' : 'No',
+                                  icon: Icons.verified_rounded,
+                                  color: source.isInDoaj ? _amber : _slate400,
+                                  bgColor: source.isInDoaj ? _amberLight : _slate100,
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 24),
                             const _SectionTitle(title: 'Related Publications'),
                             const SizedBox(height: 10),
@@ -361,7 +477,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
                                         subtitle: Padding(
                                           padding: const EdgeInsets.only(top: 6),
                                           child: Text(
-                                            'Year: ${work.publicationYear ?? "N/A"}  ·  Citations: ${work.citedByCount}',
+                                            'Year: ${work.publicationYear ?? "N/A"}  ·  Citations: ${work.citedByCount} ${work.volume != null ? " · Vol: ${work.volume}" : ""}',
                                             style: const TextStyle(fontSize: 11, color: _slate600),
                                           ),
                                         ),
@@ -384,7 +500,74 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
                           ],
                         ),
                       ),
-                      // Tab 2: Profile
+
+                      // Tab 2: Keywords (Key word trong journal)
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _SectionTitle(title: 'Keywords associated with this Journal'),
+                            const SizedBox(height: 12),
+                            Builder(
+                              builder: (context) {
+                                if (provider.journalKeywordsState == LoadState.loading) {
+                                  return const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(20.0),
+                                      child: CircularProgressIndicator(color: _indigo),
+                                    ),
+                                  );
+                                }
+                                if (provider.journalKeywordsState == LoadState.error) {
+                                  return const Card(
+                                    elevation: 0,
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16.0),
+                                      child: Text('Failed to load keywords.', style: TextStyle(color: Colors.red)),
+                                    ),
+                                  );
+                                }
+                                if (provider.journalKeywords.isEmpty) {
+                                  return const Card(
+                                    elevation: 0,
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16.0),
+                                      child: Text('No keyword statistics found for this source.'),
+                                    ),
+                                  );
+                                }
+                                return Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: provider.journalKeywords.map((kw) {
+                                    return ActionChip(
+                                      avatar: const Icon(Icons.tag, size: 14, color: _indigo),
+                                      label: Text('${kw.displayName} (${kw.paperCount})'),
+                                      onPressed: () {
+                                        provider.searchKeyword(kw);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const KeywordDetailScreen(),
+                                          ),
+                                        );
+                                      },
+                                      backgroundColor: _indigoLight,
+                                      side: BorderSide(color: _indigo.withOpacity(0.2)),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    );
+                                  }).toList(),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Tab 3: Profile
                       SingleChildScrollView(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -428,7 +611,7 @@ class _SourceDetailScreenState extends State<SourceDetailScreen> {
                                     icon: Icons.verified_outlined,
                                     label: 'DOAJ Listed',
                                     value: source.isInDoaj ? 'Yes' : 'No',
-                                    valueColor: source.isInDoaj ? _amber : null,
+                                    valueColor: source.isInDoaj ? _emerald : null,
                                   ),
                                   if (source.countryCode != null) ...[
                                     const Divider(height: 20, color: _slate100),
