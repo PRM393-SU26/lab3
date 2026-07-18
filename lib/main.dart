@@ -23,7 +23,14 @@ import 'package:journal_trend/firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Patrol re-invokes app.main() for every single patrolTest() block that
+  // runs in the same test process (all 11 test cases are bundled together
+  // by `patrol test`). Firebase.initializeApp() throws a
+  // '[core/duplicate-app]' exception if the default app already exists, so
+  // this guard is required for more than one Patrol test to pass in a row.
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  }
 
   // ── Firebase Crashlytics setup ────────────────────────────────
   // Without this, uncaught Flutter/Dart errors never reach Crashlytics —

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:patrol/patrol.dart';
 import 'package:journal_trend/main.dart' as app;
 import 'package:flutter_test/flutter_test.dart';
@@ -13,13 +12,15 @@ void main() {
     'Test Case 9 - Export generates a PDF and uploads it to Firebase Storage',
     ($) async {
       app.main();
+      logPatrolTest(
+        'Test Case 9 - Export generates a PDF and uploads it to Firebase Storage',
+      );
       await signInWithMockAccount($);
 
       // A topic must be searched first so a dashboard exists to export.
       await searchTopic($, 'machine learning');
 
-      await $.tap(find.byIcon(Icons.person_outline));
-      await $.pumpAndSettle();
+      await tapNavTab($, navProfileTabKey);
 
       expect($('Export & Upload PDF'), findsOneWidget);
       await $.tap($('Export & Upload PDF'));

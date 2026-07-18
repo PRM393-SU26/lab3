@@ -827,6 +827,7 @@ class _SearchScreenState extends State<SearchScreen>
         final readingList = context.watch<ReadingListProvider>();
         final isSaved = readingList.contains(work.id);
         return Card(
+          key: ValueKey('workResultCard_$index'),
           elevation: 2,
           margin: const EdgeInsets.symmetric(vertical: 6),
           shape: RoundedRectangleBorder(

@@ -41,21 +41,25 @@ class _MainScreenState extends State<MainScreen> {
         },
         destinations: [
           const NavigationDestination(
+            key: Key('navHomeTab'),
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: 'Home',
           ),
           const NavigationDestination(
+            key: Key('navJournalsTab'),
             icon: Icon(Icons.menu_book_outlined),
             selectedIcon: Icon(Icons.menu_book),
             label: 'Journals',
           ),
           const NavigationDestination(
+            key: Key('navKeywordsTab'),
             icon: Icon(Icons.label_outlined),
             selectedIcon: Icon(Icons.label),
             label: 'Keywords',
           ),
           const NavigationDestination(
+            key: Key('navUsersTab'),
             icon: Icon(Icons.people_outline),
             selectedIcon: Icon(Icons.people),
             label: 'Users',
@@ -64,9 +68,15 @@ class _MainScreenState extends State<MainScreen> {
             builder: (context, auth, _) {
               final user = auth.currentUser;
               final hasPhoto = user != null && user.photoURL != null;
-              
+
+              // NOTE: this destination's *icon* swaps from Icons.person_outline
+              // to a CircleAvatar once the signed-in user has a photoURL (the
+              // Mock/Developer sign-in sets one). It always keeps the same
+              // Key('navProfileTab') though, so tests should find it by key,
+              // never by icon.
               if (!hasPhoto) {
                 return const NavigationDestination(
+                  key: Key('navProfileTab'),
                   icon: Icon(Icons.person_outline),
                   selectedIcon: Icon(Icons.person),
                   label: 'Profile',
@@ -74,6 +84,7 @@ class _MainScreenState extends State<MainScreen> {
               }
 
               return NavigationDestination(
+                key: const Key('navProfileTab'),
                 icon: CircleAvatar(
                   backgroundImage: NetworkImage(user.photoURL!),
                   radius: 12,

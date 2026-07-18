@@ -2,6 +2,7 @@ import 'package:patrol/patrol.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
 /// Shared helpers reused across the Patrol E2E test suites.
 ///
 /// Every `patrolTest` starts the app from scratch, so most scenarios need
@@ -45,4 +46,27 @@ Future<void> searchTopic(PatrolIntegrationTester $, String topic) async {
   // OpenAlex calls run over the network; give them time to resolve on top
   // of pumpAndSettle's own animation-settling loop.
   await $.pumpAndSettle(timeout: const Duration(seconds: 20));
+}
+
+/// Bottom-navigation destination keys, set in `MainScreen`.
+///
+/// Tests must navigate through these Keys and never through the
+/// destination's `icon` — the Keywords icon is `Icons.label_outlined`
+/// (not `Icons.tag_outlined`), and the Profile destination's icon swaps
+/// from `Icons.person_outline` to a `CircleAvatar` once the signed-in user
+/// has a `photoURL` (which Mock/Developer Sign-In always sets).
+const Key navHomeTabKey = Key('navHomeTab');
+const Key navJournalsTabKey = Key('navJournalsTab');
+const Key navKeywordsTabKey = Key('navKeywordsTab');
+const Key navProfileTabKey = Key('navProfileTab');
+
+/// Taps a bottom navigation bar destination by its stable [Key] and waits
+/// for the destination screen to settle.
+Future<void> tapNavTab(PatrolIntegrationTester $, Key tabKey) async {
+  await $.tap($(tabKey));
+  await $.pumpAndSettle(timeout: const Duration(seconds: 15));
+}
+
+void logPatrolTest(String testName) {
+  print('[PATROL] running $testName');
 }
